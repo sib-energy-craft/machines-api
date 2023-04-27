@@ -30,8 +30,8 @@ public class EnergyMachineBlockItem<T extends AbstractEnergyMachineBlock> extend
                               @NotNull TooltipContext context) {
         super.appendTooltip(stack, world, tooltip, context);
         var block = getBlock();
-        var maxInput = block.getMaxCharge();
-        var maxCharge = block.getEnergyLevel().to;
+        var maxCharge = block.getMaxCharge();
+        var maxInput = block.getEnergyLevel().to;
         var textColor = Color.GRAY.getRGB();
         var textStyle = Style.EMPTY.withColor(textColor);
         tooltip.add(Text.translatable("attribute.name.sib_energy_craft.max_input_eu", maxInput)
