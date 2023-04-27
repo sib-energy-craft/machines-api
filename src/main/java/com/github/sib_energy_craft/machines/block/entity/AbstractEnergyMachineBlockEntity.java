@@ -374,10 +374,11 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         }
     }
 
-    public static <T extends AbstractCookingRecipe> void simpleCookingTick(@NotNull World world,
-                                                                           @NotNull BlockPos pos,
-                                                                           @NotNull BlockState state,
-                                                                           @NotNull AbstractEnergyMachineBlockEntity<T> blockEntity) {
+    public static <T extends Recipe<Inventory>> void simpleCookingTick(
+            @NotNull World world,
+            @NotNull BlockPos pos,
+            @NotNull BlockState state,
+            @NotNull AbstractEnergyMachineBlockEntity<T> blockEntity) {
         if (world.isClient) {
             return;
         }
