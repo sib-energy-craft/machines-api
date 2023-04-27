@@ -5,7 +5,6 @@ import com.github.sib_energy_craft.energy_api.Energy;
 import com.github.sib_energy_craft.energy_api.EnergyOffer;
 import com.github.sib_energy_craft.energy_api.consumer.EnergyConsumer;
 import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
-import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
 import com.github.sib_energy_craft.sec_utils.screen.PropertyMap;
@@ -133,7 +132,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
                               @NotNull Direction dir) {
         if (dir == Direction.DOWN && slot == CHARGE_SLOT) {
             var item = stack.getItem();
-            return item instanceof ChargeableItem chargeableItem && chargeableItem.getCharge(stack) == 0;
+            return item instanceof ChargeableItem chargeableItem && !chargeableItem.hasEnergy(stack);
         }
         return true;
     }
@@ -197,8 +196,12 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         if (slot == OUTPUT_SLOT) {
             return false;
         }
-        if (slot == CHARGE_SLOT) {
-            return CoreTags.isChargeable(stack);
+        if(slot == CHARGE_SLOT) {
+            var item = stack.getItem();
+            if(item instanceof ChargeableItem chargeableItem) {
+                return chargeableItem.hasEnergy(stack);
+            }
+            return false;
         }
         return true;
     }
