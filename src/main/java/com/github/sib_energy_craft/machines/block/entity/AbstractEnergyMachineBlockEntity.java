@@ -307,11 +307,21 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
      */
     abstract public int getCookTime(@NotNull World world);
 
+    /**
+     * Method for calculation decrement on cooking
+     *
+     * @param recipe using recipe
+     * @return amount of source to decrement
+     */
+    protected int calculateDecrement(@NotNull R recipe) {
+        return 1;
+    }
+
     protected static boolean canAcceptRecipeOutput(@NotNull World world,
-                                                   @Nullable Recipe<?> recipe,
+                                                   @NotNull Recipe<?> recipe,
                                                    @NotNull DefaultedList<ItemStack> slots,
                                                    int count) {
-        if (slots.get(SOURCE_SLOT).isEmpty() || recipe == null) {
+        if (slots.get(SOURCE_SLOT).isEmpty()) {
             return false;
         }
         var outputStack = recipe.getOutput(world.getRegistryManager());
@@ -333,15 +343,16 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
     }
 
     protected static boolean craftRecipe(@NotNull World world,
-                                         @Nullable Recipe<?> recipe,
+                                         @NotNull Recipe<Inventory> recipe,
                                          @NotNull DefaultedList<ItemStack> slots,
                                          int decrement,
-                                         int count) {
-        if (recipe == null || !canAcceptRecipeOutput(world, recipe, slots, count)) {
+                                         int maxCount) {
+        if (!canAcceptRecipeOutput(world, recipe, slots, maxCount)) {
             return false;
         }
         var sourceSlot = slots.get(SOURCE_SLOT);
-        var recipeStack = recipe.getOutput(world.getRegistryManager());
+        var registryManager = world.getRegistryManager();
+        var recipeStack = recipe.getOutput(registryManager);
         var outputStack = slots.get(OUTPUT_SLOT);
         if (outputStack.isEmpty()) {
             slots.set(OUTPUT_SLOT, recipeStack.copy());
@@ -352,16 +363,16 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         return true;
     }
 
-    protected static <T extends AbstractCookingRecipe & Recipe<Inventory>> int getCookTime(World world,
-                                                                                           RecipeType<T> recipeType,
-                                                                                           Inventory inventory) {
+    protected static <T extends AbstractCookingRecipe> int getCookTime(@NotNull World world,
+                                                                       @NotNull RecipeType<T> recipeType,
+                                                                       @NotNull Inventory inventory) {
         return world.getRecipeManager()
                 .getFirstMatch(recipeType, inventory, world)
                 .map(AbstractCookingRecipe::getCookTime)
                 .orElse(200);
     }
 
-    protected static void charge(AbstractEnergyMachineBlockEntity<?> blockEntity) {
+    protected static void charge(@NotNull AbstractEnergyMachineBlockEntity<?> blockEntity) {
         var itemStack = blockEntity.inventory.get(CHARGE_SLOT);
         var item = itemStack.getItem();
         if (!itemStack.isEmpty() && (item instanceof ChargeableItem chargeableItem)) {
@@ -390,23 +401,27 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
 
         if (blockEntity.energyContainer.hasEnergy()) {
             var recipeManager = world.getRecipeManager();
-            var recipe = recipeManager.getFirstMatch(blockEntity.recipeType, blockEntity, world).orElse(null);
-            var i = blockEntity.getMaxCountPerStack();
-            if (canAcceptRecipeOutput(world, recipe, blockEntity.inventory, i)) {
-                blockEntity.energyContainer.subtract(Energy.of(1));
-                ++blockEntity.cookTime;
-                blockEntity.working = true;
-                if (blockEntity.cookTime == blockEntity.cookTimeTotal) {
-                    blockEntity.cookTime = 0;
-                    blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
-                    if (craftRecipe(world, recipe, blockEntity.inventory, 1, i)) {
-                        blockEntity.setLastRecipe(recipe);
+            var recipe = recipeManager.getFirstMatch(blockEntity.recipeType, blockEntity, world)
+                    .orElse(null);
+            if(recipe != null) {
+                var maxCountPerStack = blockEntity.getMaxCountPerStack();
+                if (canAcceptRecipeOutput(world, recipe, blockEntity.inventory, maxCountPerStack)) {
+                    blockEntity.energyContainer.subtract(Energy.of(1));
+                    ++blockEntity.cookTime;
+                    blockEntity.working = true;
+                    if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
+                        blockEntity.cookTime = 0;
+                        blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
+                        int decrement = blockEntity.calculateDecrement(recipe);
+                        if (craftRecipe(world, recipe, blockEntity.inventory, decrement, maxCountPerStack)) {
+                            blockEntity.setLastRecipe(recipe);
+                        }
                     }
+                    changed = true;
+                } else {
+                    blockEntity.cookTime = 0;
+                    blockEntity.working = false;
                 }
-                changed = true;
-            } else {
-                blockEntity.cookTime = 0;
-                blockEntity.working = false;
             }
         } else {
             blockEntity.working = false;
