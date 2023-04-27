@@ -396,6 +396,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         var hasEnergy = blockEntity.energyContainer.hasEnergy();
         var changed = false;
         var working = blockEntity.working;
+        blockEntity.working = false;
 
         charge(blockEntity);
 
@@ -420,11 +421,8 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
                     changed = true;
                 } else {
                     blockEntity.cookTime = 0;
-                    blockEntity.working = false;
                 }
             }
-        } else {
-            blockEntity.working = false;
         }
         if (working != blockEntity.working) {
             state = state.with(AbstractEnergyMachineBlock.WORKING, blockEntity.working);
