@@ -287,15 +287,32 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
     public List<Recipe<?>> getRecipesUsedAndDropExperience(@NotNull ServerWorld world,
                                                            @NotNull Vec3d pos) {
         ArrayList<Recipe<?>> list = Lists.newArrayList();
+        var recipeManager = world.getRecipeManager();
         for (var entry : this.recipesUsed.object2IntEntrySet()) {
-            world.getRecipeManager().get(entry.getKey()).ifPresent(recipe -> {
+            var key = entry.getKey();
+            recipeManager.get(key).ifPresent(recipe -> {
                 list.add(recipe);
-                if (recipe instanceof AbstractCookingRecipe cookingRecipe) {
-                    ExperienceUtils.drop(world, pos, entry.getIntValue(), cookingRecipe.getExperience());
-                }
+                dropExperience(world, pos, entry.getIntValue(), recipe);
             });
         }
         return list;
+    }
+
+    /**
+     * Drop experience on recipe use
+     *
+     * @param world game world
+     * @param pos position
+     * @param id recipe entry id
+     * @param recipe used recipe
+     */
+    protected void dropExperience(@NotNull ServerWorld world,
+                                  @NotNull Vec3d pos,
+                                  int id,
+                                  @NotNull Recipe<?> recipe) {
+        if (recipe instanceof AbstractCookingRecipe cookingRecipe) {
+            ExperienceUtils.drop(world, pos, id, cookingRecipe.getExperience());
+        }
     }
 
     /**
