@@ -5,14 +5,19 @@ import com.github.sib_energy_craft.energy_api.Energy;
 import com.github.sib_energy_craft.energy_api.EnergyOffer;
 import com.github.sib_energy_craft.energy_api.consumer.EnergyConsumer;
 import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
+import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
+import com.github.sib_energy_craft.pipes.api.ItemConsumer;
+import com.github.sib_energy_craft.pipes.api.ItemSupplier;
+import com.github.sib_energy_craft.pipes.utils.PipeUtils;
 import com.github.sib_energy_craft.sec_utils.screen.PropertyMap;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -34,6 +39,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMachineProperties.*;
@@ -43,7 +49,7 @@ import static com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMa
  * @author sibmaks
  */
 public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventory>> extends LockableContainerBlockEntity
-        implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer {
+        implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer, ItemConsumer, ItemSupplier {
     public static final int SOURCE_SLOT = 0;
     public static final int CHARGE_SLOT = 1;
     public static final int OUTPUT_SLOT = 2;
@@ -448,5 +454,69 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         if (hasEnergy != blockEntity.energyContainer.hasEnergy() || changed) {
             markDirty(world, pos, state);
         }
+    }
+
+    @Override
+    public boolean canConsume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
+        if(CoreTags.isChargeable(itemStack)) {
+            var chargeSlot = inventory.get(CHARGE_SLOT);
+            return chargeSlot.isEmpty() || PipeUtils.canMergeItems(chargeSlot, itemStack);
+        }
+        var inputStack = inventory.get(SOURCE_SLOT);
+        return isValid(SOURCE_SLOT, itemStack) &&
+                (inputStack.isEmpty() || PipeUtils.canMergeItems(inputStack, itemStack));
+    }
+
+    @Override
+    public @NotNull ItemStack consume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
+        if(!canConsume(itemStack, direction)) {
+            return itemStack;
+        }
+        markDirty();
+        if(AbstractFurnaceBlockEntity.canUseAsFuel(itemStack)) {
+            var chargeSlot = inventory.get(CHARGE_SLOT);
+            if(chargeSlot.isEmpty()) {
+                inventory.set(CHARGE_SLOT, itemStack);
+                return ItemStack.EMPTY;
+            }
+            return PipeUtils.mergeItems(chargeSlot, itemStack);
+        }
+        var inputStack = inventory.get(SOURCE_SLOT);
+        if(inputStack.isEmpty()) {
+            inventory.set(SOURCE_SLOT, itemStack);
+            return ItemStack.EMPTY;
+        }
+        return PipeUtils.mergeItems(inputStack, itemStack);
+    }
+
+    @Override
+    public @NotNull List<ItemStack> canSupply(@NotNull Direction direction) {
+        var outputStack = inventory.get(OUTPUT_SLOT);
+        if(outputStack.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Collections.singletonList(outputStack);
+    }
+
+    @Override
+    public boolean supply(@NotNull ItemStack requested, @NotNull Direction direction) {
+        var outputStack = inventory.get(OUTPUT_SLOT);
+        if(outputStack.isEmpty() || !outputStack.isItemEqual(requested) || outputStack.getCount() < requested.getCount()) {
+            return false;
+        }
+        outputStack.decrement(requested.getCount());
+        markDirty();
+        return true;
+    }
+
+    @Override
+    public void returnStack(@NotNull ItemStack requested, @NotNull Direction direction) {
+        var outputStack = inventory.get(OUTPUT_SLOT);
+        if(outputStack.isEmpty()) {
+            inventory.set(OUTPUT_SLOT, requested);
+        } else {
+            outputStack.increment(requested.getCount());
+        }
+        markDirty();
     }
 }
