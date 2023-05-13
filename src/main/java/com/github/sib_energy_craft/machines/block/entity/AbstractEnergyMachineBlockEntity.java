@@ -519,4 +519,13 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         }
         markDirty();
     }
+
+    /**
+     * Get current energy machine charge
+     *
+     * @return machine charge
+     */
+    public int getCharge() {
+        return energyContainer.getCharge().intValue();
+    }
 }

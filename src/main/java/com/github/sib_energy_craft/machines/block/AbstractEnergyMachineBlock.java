@@ -8,11 +8,13 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.stat.Stats;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.util.ActionResult;
@@ -124,4 +126,34 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
     protected abstract void openScreen(@NotNull World world,
                                        @NotNull BlockPos pos,
                                        @NotNull PlayerEntity player);
+
+
+    @Override
+    public void afterBreak(@NotNull World world,
+                           @NotNull PlayerEntity player,
+                           @NotNull BlockPos pos,
+                           @NotNull BlockState state,
+                           @Nullable BlockEntity blockEntity,
+                           @NotNull ItemStack hand) {
+        player.incrementStat(Stats.MINED.getOrCreateStat(this));
+        player.addExhaustion(0.005F);
+        if (!(world instanceof ServerWorld serverWorld)) {
+            return;
+        }
+        getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach((stackx) -> {
+            dropStack(world, pos, stackx);
+            if (!(blockEntity instanceof AbstractEnergyMachineBlockEntity<?> abstractEnergyMachineBlockEntity)) {
+                return;
+            }
+            if (abstractEnergyMachineBlockEntity.hasCustomName()) {
+                stackx.setCustomName(abstractEnergyMachineBlockEntity.getCustomName());
+            }
+            var item = stackx.getItem();
+            var charge = abstractEnergyMachineBlockEntity.getCharge();
+            if (item instanceof ChargeableItem chargeableItem) {
+                chargeableItem.charge(stackx, charge);
+            }
+        });
+        state.onStacksDropped(serverWorld, pos, hand, true);
+    }
 }
