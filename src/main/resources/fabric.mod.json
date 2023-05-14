@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sec-energy-machines-api",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "name": "SibEnergyCraft - Energy machines API",
   "authors": [
     "sibmaks"

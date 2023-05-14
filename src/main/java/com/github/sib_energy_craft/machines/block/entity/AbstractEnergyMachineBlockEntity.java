@@ -50,6 +50,8 @@ import static com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMa
  */
 public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventory>> extends LockableContainerBlockEntity
         implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer, ItemConsumer, ItemSupplier {
+    private static final Energy ENERGY_ONE = Energy.of(1);
+
     public static final int SOURCE_SLOT = 0;
     public static final int CHARGE_SLOT = 1;
     public static final int OUTPUT_SLOT = 2;
@@ -259,6 +261,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
             }
         }
         energyContainer.receiveOffer(energyOffer);
+        markDirty();
     }
 
     /**
@@ -416,32 +419,33 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
         if (world.isClient) {
             return;
         }
-        var hasEnergy = blockEntity.energyContainer.hasEnergy();
+        var hasEnergy = blockEntity.energyContainer.hasAtLeast(ENERGY_ONE);
         var changed = false;
         var working = blockEntity.working;
         blockEntity.working = false;
 
         charge(blockEntity);
 
-        if (blockEntity.energyContainer.hasEnergy()) {
+        if (blockEntity.energyContainer.hasAtLeast(ENERGY_ONE)) {
             var recipeManager = world.getRecipeManager();
             var recipe = recipeManager.getFirstMatch(blockEntity.recipeType, blockEntity, world)
                     .orElse(null);
             if(recipe != null) {
                 var maxCountPerStack = blockEntity.getMaxCountPerStack();
                 if (canAcceptRecipeOutput(world, recipe, blockEntity.inventory, maxCountPerStack)) {
-                    blockEntity.energyContainer.subtract(Energy.of(1));
-                    ++blockEntity.cookTime;
-                    blockEntity.working = true;
-                    if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
-                        blockEntity.cookTime = 0;
-                        blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
-                        int decrement = blockEntity.calculateDecrement(recipe);
-                        if (craftRecipe(world, recipe, blockEntity.inventory, decrement, maxCountPerStack)) {
-                            blockEntity.setLastRecipe(recipe);
+                    if(blockEntity.energyContainer.subtract(ENERGY_ONE)) {
+                        ++blockEntity.cookTime;
+                        blockEntity.working = true;
+                        if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
+                            blockEntity.cookTime = 0;
+                            blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
+                            int decrement = blockEntity.calculateDecrement(recipe);
+                            if (craftRecipe(world, recipe, blockEntity.inventory, decrement, maxCountPerStack)) {
+                                blockEntity.setLastRecipe(recipe);
+                            }
                         }
+                        changed = true;
                     }
-                    changed = true;
                 } else {
                     blockEntity.cookTime = 0;
                 }
