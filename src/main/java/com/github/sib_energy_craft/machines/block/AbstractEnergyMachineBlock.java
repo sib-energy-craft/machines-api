@@ -54,7 +54,7 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
                          @NotNull BlockState state,
                          @Nullable LivingEntity placer,
                          @NotNull ItemStack itemStack) {
-        if (world.getBlockEntity(pos) instanceof AbstractEnergyMachineBlockEntity<?> entity) {
+        if (world.getBlockEntity(pos) instanceof AbstractEnergyMachineBlockEntity entity) {
             entity.setCustomName(itemStack.getName());
             if(itemStack.hasCustomName()) {
                 entity.setCustomName(itemStack.getName());
@@ -91,7 +91,7 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
             return;
         }
         var blockEntity = world.getBlockEntity(pos);
-        if (blockEntity instanceof AbstractEnergyMachineBlockEntity<?> machineBlockEntity) {
+        if (blockEntity instanceof AbstractEnergyMachineBlockEntity machineBlockEntity) {
             if (world instanceof ServerWorld serverWorld) {
                 ItemScatterer.spawn(world, pos, machineBlockEntity);
                 machineBlockEntity.getRecipesUsedAndDropExperience(serverWorld, Vec3d.ofCenter(pos));
@@ -142,7 +142,7 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
         }
         getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach((stackx) -> {
             dropStack(world, pos, stackx);
-            if (!(blockEntity instanceof AbstractEnergyMachineBlockEntity<?> abstractEnergyMachineBlockEntity)) {
+            if (!(blockEntity instanceof AbstractEnergyMachineBlockEntity abstractEnergyMachineBlockEntity)) {
                 return;
             }
             if (abstractEnergyMachineBlockEntity.hasCustomName()) {

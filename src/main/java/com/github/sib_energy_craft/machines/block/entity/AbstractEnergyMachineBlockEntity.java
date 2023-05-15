@@ -14,7 +14,6 @@ import com.github.sib_energy_craft.pipes.utils.PipeUtils;
 import com.github.sib_energy_craft.sec_utils.screen.PropertyMap;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity;
@@ -48,7 +47,7 @@ import static com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMa
  * @since 0.0.1
  * @author sibmaks
  */
-public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventory>> extends LockableContainerBlockEntity
+public abstract class AbstractEnergyMachineBlockEntity extends LockableContainerBlockEntity
         implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer, ItemConsumer, ItemSupplier {
     private static final Energy ENERGY_ONE = Energy.of(1);
 
@@ -69,16 +68,12 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
     protected final AbstractEnergyMachineBlock block;
     protected final PropertyMap<AbstractEnergyMachineProperties> propertyMap;
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
-    @Getter
-    protected final RecipeType<R> recipeType;
 
     public AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
                                             @NotNull BlockPos blockPos,
                                             @NotNull BlockState blockState,
-                                            @NotNull RecipeType<R> recipeType,
                                             @NotNull AbstractEnergyMachineBlock block) {
         super(blockEntityType, blockPos, blockState);
-        this.recipeType = recipeType;
         this.block = block;
         this.recipesUsed = new Object2IntOpenHashMap<>();
         this.inventory = DefaultedList.ofSize(3, ItemStack.EMPTY);
@@ -222,7 +217,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
     @Override
     public void setLastRecipe(@Nullable Recipe<?> recipe) {
         if (recipe != null) {
-            Identifier identifier = recipe.getId();
+            var identifier = recipe.getId();
             this.recipesUsed.addTo(identifier, 1);
         }
     }
@@ -334,12 +329,21 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
     abstract public int getCookTime(@NotNull World world);
 
     /**
+     * Get current recipe type
+     *
+     * @return recipe type
+     * @param <C> inventory type
+     * @param <T> recipe type
+     */
+    abstract public<C extends Inventory, T extends Recipe<C>> @NotNull RecipeType<T> getRecipeType();
+
+    /**
      * Method for calculation decrement on cooking
      *
      * @param recipe using recipe
      * @return amount of source to decrement
      */
-    protected int calculateDecrement(@NotNull R recipe) {
+    protected int calculateDecrement(@NotNull Recipe<?> recipe) {
         return 1;
     }
 
@@ -398,7 +402,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
                 .orElse(200);
     }
 
-    protected static void charge(@NotNull AbstractEnergyMachineBlockEntity<?> blockEntity) {
+    protected static void charge(@NotNull AbstractEnergyMachineBlockEntity blockEntity) {
         var itemStack = blockEntity.inventory.get(CHARGE_SLOT);
         var item = itemStack.getItem();
         if (!itemStack.isEmpty() && (item instanceof ChargeableItem chargeableItem)) {
@@ -415,7 +419,7 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
             @NotNull World world,
             @NotNull BlockPos pos,
             @NotNull BlockState state,
-            @NotNull AbstractEnergyMachineBlockEntity<T> blockEntity) {
+            @NotNull AbstractEnergyMachineBlockEntity blockEntity) {
         if (world.isClient) {
             return;
         }
@@ -426,36 +430,55 @@ public abstract class AbstractEnergyMachineBlockEntity<R extends Recipe<Inventor
 
         charge(blockEntity);
 
-        if (blockEntity.energyContainer.hasAtLeast(ENERGY_ONE)) {
-            var recipeManager = world.getRecipeManager();
-            var recipe = recipeManager.getFirstMatch(blockEntity.recipeType, blockEntity, world)
-                    .orElse(null);
-            if(recipe != null) {
-                var maxCountPerStack = blockEntity.getMaxCountPerStack();
-                if (canAcceptRecipeOutput(world, recipe, blockEntity.inventory, maxCountPerStack)) {
-                    if(blockEntity.energyContainer.subtract(ENERGY_ONE)) {
-                        ++blockEntity.cookTime;
-                        blockEntity.working = true;
-                        if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
-                            blockEntity.cookTime = 0;
-                            blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
-                            int decrement = blockEntity.calculateDecrement(recipe);
-                            if (craftRecipe(world, recipe, blockEntity.inventory, decrement, maxCountPerStack)) {
-                                blockEntity.setLastRecipe(recipe);
-                            }
-                        }
-                        changed = true;
-                    }
-                } else {
-                    blockEntity.cookTime = 0;
-                }
-            }
+        if (!blockEntity.energyContainer.hasAtLeast(ENERGY_ONE)) {
+            boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasEnergy();
+            updateState(working, blockEntity, state, world, pos, energyChanged);
+            return;
         }
-        if (working != blockEntity.working) {
+        var recipeManager = world.getRecipeManager();
+        var recipeType = blockEntity.getRecipeType();
+        var recipe = recipeManager.getFirstMatch(recipeType, blockEntity, world)
+                .orElse(null);
+        if (recipe == null) {
+            boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasEnergy();
+            updateState(working, blockEntity, state, world, pos, energyChanged);
+            return;
+        }
+        var maxCountPerStack = blockEntity.getMaxCountPerStack();
+        if (canAcceptRecipeOutput(world, recipe, blockEntity.inventory, maxCountPerStack)) {
+            if (blockEntity.energyContainer.subtract(ENERGY_ONE)) {
+                ++blockEntity.cookTime;
+                blockEntity.working = true;
+                if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
+                    blockEntity.cookTime = 0;
+                    blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
+                    int decrement = blockEntity.calculateDecrement(recipe);
+                    if (craftRecipe(world, recipe, blockEntity.inventory, decrement, maxCountPerStack)) {
+                        blockEntity.setLastRecipe(recipe);
+                    }
+                }
+                changed = true;
+            }
+        } else {
+            blockEntity.cookTime = 0;
+        }
+
+        boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasEnergy();
+        updateState(working, blockEntity, state, world, pos, energyChanged|| changed);
+    }
+
+    private static void updateState(boolean wasWork,
+                                    @NotNull AbstractEnergyMachineBlockEntity blockEntity,
+                                    @NotNull BlockState state,
+                                    @NotNull World world,
+                                    @NotNull BlockPos pos,
+                                    boolean markDirty) {
+        if (wasWork != blockEntity.working) {
             state = state.with(AbstractEnergyMachineBlock.WORKING, blockEntity.working);
             world.setBlockState(pos, state, Block.NOTIFY_ALL);
+            markDirty = true;
         }
-        if (hasEnergy != blockEntity.energyContainer.hasEnergy() || changed) {
+        if (markDirty) {
             markDirty(world, pos, state);
         }
     }

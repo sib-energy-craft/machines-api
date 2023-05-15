@@ -54,7 +54,7 @@ public class OutputSlot extends Slot {
     protected void onCrafted(@NotNull ItemStack stack) {
         stack.onCraft(this.player.world, this.player, this.amount);
         if (this.player instanceof ServerPlayerEntity serverPlayer &&
-                this.inventory instanceof AbstractEnergyMachineBlockEntity<?> machineBlockEntity) {
+                this.inventory instanceof AbstractEnergyMachineBlockEntity machineBlockEntity) {
             machineBlockEntity.dropExperienceForRecipesUsed(serverPlayer);
         }
         this.amount = 0;
