@@ -368,7 +368,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
      * Get current recipe
      *
      * @return recipe
-     * @since 0.0.15
+     * @since 0.0.16
      */
     abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world);
 
@@ -376,7 +376,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
      * Get current recipe
      *
      * @return recipe
-     * @since 0.0.15
+     * @since 0.0.16
      */
     protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
                                                                                @NotNull World world) {
