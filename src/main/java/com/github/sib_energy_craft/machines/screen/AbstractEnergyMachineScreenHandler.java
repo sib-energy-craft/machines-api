@@ -121,6 +121,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
 
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.CHARGE);
+            slotGroupBuilder.addSlot(globalSlotIndex++, slots);
             var chargeSlot = new ChargeSlot(inventory, slots, vs.chargeSlotX(), vs.chargeSlotY(), false);
             this.addSlot(chargeSlot);
             var slotGroup = slotGroupBuilder.build();
