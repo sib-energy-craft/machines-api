@@ -447,7 +447,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         if (!chargeStack.isEmpty() && (chargeItem instanceof ChargeableItem chargeableItem)) {
             int charge = chargeableItem.getCharge(chargeStack);
             if (charge > 0) {
-                int transferred = Math.min(charge, blockEntity.energyContainer.getFreeSpace().intValue());
+                int transferred = Math.min(
+                        blockEntity.block.getEnergyLevel().to,
+                        Math.min(charge, blockEntity.energyContainer.getFreeSpace().intValue())
+                );
                 chargeableItem.discharge(chargeStack, transferred);
                 blockEntity.energyContainer.add(transferred);
             }
