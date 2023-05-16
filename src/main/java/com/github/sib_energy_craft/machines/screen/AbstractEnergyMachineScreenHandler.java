@@ -223,13 +223,13 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      *
      * @return cook progress
      */
-    public int getCookProgress() {
+    public int getCookProgress(int width) {
         int i = getCookingTime();
         int j = getCookingTimeTotal();
         if (j == 0 || i == 0) {
             return 0;
         }
-        return i * 22 / j;
+        return i * width / j;
     }
 
     /**
