@@ -365,13 +365,29 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     }
 
     /**
-     * Get current recipe type
+     * Get current recipe
      *
-     * @return recipe type
-     * @param <C> inventory type
-     * @param <T> recipe type
+     * @return recipe
+     * @since 0.0.15
      */
-    abstract public<C extends Inventory, T extends Recipe<C>> @NotNull RecipeType<T> getRecipeType();
+    abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world);
+
+    /**
+     * Get current recipe
+     *
+     * @return recipe
+     * @since 0.0.15
+     */
+    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
+                                                                               @NotNull World world) {
+        var sourceInventory = (C) inventory.getInventory(EnergyMachineInventoryTypes.SOURCE);
+        if(sourceInventory == null) {
+            return null;
+        }
+        var recipeManager = world.getRecipeManager();
+        return recipeManager.getFirstMatch(recipeType, sourceInventory, world)
+                .orElse(null);
+    }
 
     /**
      * Method for calculation decrement of source items on cooking
@@ -441,7 +457,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
                 .orElse(200);
     }
 
-    protected static void charge(@NotNull AbstractEnergyMachineBlockEntity blockEntity) {
+    protected static boolean charge(@NotNull AbstractEnergyMachineBlockEntity blockEntity) {
         var chargeStack = blockEntity.inventory.getStack(EnergyMachineInventoryTypes.CHARGE, 0);
         var chargeItem = chargeStack.getItem();
         if (!chargeStack.isEmpty() && (chargeItem instanceof ChargeableItem chargeableItem)) {
@@ -453,8 +469,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
                 );
                 chargeableItem.discharge(chargeStack, transferred);
                 blockEntity.energyContainer.add(transferred);
+                return true;
             }
         }
+        return false;
     }
 
     public static <T extends Recipe<Inventory>> void simpleCookingTick(
@@ -471,20 +489,17 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         var working = blockEntity.working;
         blockEntity.working = false;
 
-        charge(blockEntity);
+        if(charge(blockEntity)) {
+            changed = true;
+        }
 
         if (!blockEntity.energyContainer.hasAtLeast(requiredEnergy)) {
-            boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasEnergy();
-            updateState(working, blockEntity, state, world, pos, energyChanged);
+            updateState(working, blockEntity, state, world, pos, changed);
             return;
         }
-        var recipeManager = world.getRecipeManager();
-        var recipeType = blockEntity.getRecipeType();
-        var recipe = recipeManager.getFirstMatch(recipeType, blockEntity, world)
-                .orElse(null);
+        var recipe = blockEntity.getRecipe(world);
         if (recipe == null) {
-            boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasEnergy();
-            updateState(working, blockEntity, state, world, pos, energyChanged);
+            updateState(working, blockEntity, state, world, pos, changed);
             return;
         }
         var maxCountPerStack = blockEntity.getMaxCountPerStack();
