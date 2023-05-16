@@ -368,10 +368,8 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
      * Get current recipe type
      *
      * @return recipe type
-     * @param <C> inventory type
-     * @param <T> recipe type
      */
-    abstract public<C extends Inventory, T extends Recipe<C>> @NotNull RecipeType<T> getRecipeType();
+    abstract public @NotNull RecipeType<? extends Recipe<? super Inventory>> getRecipeType();
 
     /**
      * Method for calculation decrement of source items on cooking
@@ -413,7 +411,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     protected static boolean craftRecipe(int slot,
                                          @NotNull CombinedInventory<EnergyMachineInventoryTypes> combinedInventory,
                                          @NotNull World world,
-                                         @NotNull Recipe<Inventory> recipe,
+                                         @NotNull Recipe<? super Inventory> recipe,
                                          int decrement,
                                          int maxCount) {
         if (!canAcceptRecipeOutput(slot, combinedInventory, world, recipe, maxCount)) {
