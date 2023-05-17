@@ -26,8 +26,8 @@ import org.jetbrains.annotations.NotNull;
  * @author sibmaks
  */
 public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHandler {
-    private final Inventory inventory;
-    private final PropertyDelegate propertyDelegate;
+    protected final Inventory inventory;
+    protected final PropertyDelegate propertyDelegate;
     protected final SlotGroupsMeta slotGroupsMeta;
     protected final World world;
     protected final int slotCount;
