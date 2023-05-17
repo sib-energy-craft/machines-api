@@ -501,6 +501,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
 
         if (!blockEntity.energyContainer.hasAtLeast(requiredEnergy)) {
             blockEntity.updateState(working, state, world, pos, changed);
+            blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
             return;
         }
         var recipe = blockEntity.getRecipe(world);
