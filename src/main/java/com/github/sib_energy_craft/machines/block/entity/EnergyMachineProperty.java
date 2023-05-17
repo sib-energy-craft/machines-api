@@ -11,6 +11,6 @@ public interface EnergyMachineProperty {
      *
      * @return property index
      */
-    int ordinal();
+    int getIndex();
 
 }

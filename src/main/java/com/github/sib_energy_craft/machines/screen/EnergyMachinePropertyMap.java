@@ -32,7 +32,7 @@ public class EnergyMachinePropertyMap implements PropertyDelegate {
     public<K extends EnergyMachineProperty> void add(@NotNull K property,
                                                      @NotNull Supplier<Integer> supplier,
                                                      @NotNull Consumer<Integer> consumer) {
-        int index = property.ordinal();
+        int index = property.getIndex();
         if(supplierMap.containsKey(index)) {
             throw new IllegalArgumentException("index %s already exists".formatted(index));
         }
@@ -48,7 +48,7 @@ public class EnergyMachinePropertyMap implements PropertyDelegate {
      */
     public<K extends EnergyMachineProperty> void add(@NotNull K property,
                                                      @NotNull Supplier<Integer> supplier) {
-        int index = property.ordinal();
+        int index = property.getIndex();
         if(supplierMap.containsKey(index)) {
             throw new IllegalArgumentException("index %s already exists".formatted(index));
         }

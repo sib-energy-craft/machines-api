@@ -8,5 +8,10 @@ public enum EnergyMachineProperties implements EnergyMachineProperty {
     COOKING_TIME,
     COOKING_TIME_TOTAL,
     CHARGE,
-    MAX_CHARGE
+    MAX_CHARGE;
+
+    @Override
+    public int getIndex() {
+        return ordinal();
+    }
 }
