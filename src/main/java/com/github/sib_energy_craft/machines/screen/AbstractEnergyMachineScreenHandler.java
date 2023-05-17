@@ -2,7 +2,7 @@ package com.github.sib_energy_craft.machines.screen;
 
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
-import com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperties;
+import com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperty;
 import com.github.sib_energy_craft.sec_utils.screen.SlotsScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupMetaBuilder;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMeta;
@@ -238,7 +238,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return charge
      */
     public int getCharge() {
-        return propertyDelegate.get(EnergyMachineProperties.CHARGE.ordinal());
+        return propertyDelegate.get(EnergyMachineProperty.CHARGE.ordinal());
     }
 
     /**
@@ -247,7 +247,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return max charge
      */
     public int getMaxCharge() {
-        return propertyDelegate.get(EnergyMachineProperties.MAX_CHARGE.ordinal());
+        return propertyDelegate.get(EnergyMachineProperty.MAX_CHARGE.ordinal());
     }
 
     /**
@@ -256,7 +256,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return cooking time
      */
     public int getCookingTime() {
-        return propertyDelegate.get(EnergyMachineProperties.COOKING_TIME.ordinal());
+        return propertyDelegate.get(EnergyMachineProperty.COOKING_TIME.ordinal());
     }
 
     /**
@@ -265,7 +265,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return total cooking time
      */
     public int getCookingTimeTotal() {
-        return propertyDelegate.get(EnergyMachineProperties.COOKING_TIME_TOTAL.ordinal());
+        return propertyDelegate.get(EnergyMachineProperty.COOKING_TIME_TOTAL.ordinal());
     }
 }
 

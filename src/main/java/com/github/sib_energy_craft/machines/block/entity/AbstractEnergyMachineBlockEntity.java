@@ -8,6 +8,7 @@ import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
+import com.github.sib_energy_craft.machines.utils.EnergyMachineUtils;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperties.*;
+import static com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperty.*;
 
 /**
  * @since 0.0.1
@@ -60,9 +61,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     protected boolean working;
 
     protected final AbstractEnergyMachineBlock block;
-    protected final PropertyMap<EnergyMachineProperties> propertyMap;
+    protected final PropertyMap<EnergyMachineProperty> propertyMap;
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
-    protected final CombinedInventory<EnergyMachineInventoryTypes> inventory;
+    protected final CombinedInventory<EnergyMachineInventoryType> inventory;
+    private final EnumMap<EnergyMachineEvent, List<Runnable>> eventListeners;
     protected final int slots;
     protected final int[] topSlots;
     protected final int[] sideSlots;
@@ -85,10 +87,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         this.block = block;
         this.recipesUsed = new Object2IntOpenHashMap<>();
 
-        var enumMap = new EnumMap<EnergyMachineInventoryTypes, Inventory>(EnergyMachineInventoryTypes.class);
-        enumMap.put(EnergyMachineInventoryTypes.SOURCE, new SimpleInventory(slots));
-        enumMap.put(EnergyMachineInventoryTypes.CHARGE, new SimpleInventory(1));
-        enumMap.put(EnergyMachineInventoryTypes.OUTPUT, new SimpleInventory(slots));
+        var enumMap = new EnumMap<EnergyMachineInventoryType, Inventory>(EnergyMachineInventoryType.class);
+        enumMap.put(EnergyMachineInventoryType.SOURCE, new SimpleInventory(slots));
+        enumMap.put(EnergyMachineInventoryType.CHARGE, new SimpleInventory(1));
+        enumMap.put(EnergyMachineInventoryType.OUTPUT, new SimpleInventory(slots));
         this.inventory = new CombinedInventory<>(enumMap);
 
         this.slots = slots;
@@ -99,11 +101,12 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         this.bottomSlots = outputSlots.stream().mapToInt(it -> it).toArray();
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
-        this.propertyMap = new PropertyMap<>(EnergyMachineProperties.class);
+        this.propertyMap = new PropertyMap<>(EnergyMachineProperty.class);
         this.propertyMap.add(COOKING_TIME, () -> cookTime);
         this.propertyMap.add(COOKING_TIME_TOTAL, () -> cookTimeTotal);
         this.propertyMap.add(CHARGE, () -> this.energyContainer.getCharge().intValue());
         this.propertyMap.add(MAX_CHARGE, () -> this.energyContainer.getMaxCharge().intValue());
+        this.eventListeners = new EnumMap<EnergyMachineEvent, List<Runnable>>(EnergyMachineEvent.class);
     }
 
     @Override
@@ -154,7 +157,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
                               @NotNull ItemStack stack,
                               @NotNull Direction dir) {
         var slotType = inventory.getType(slot);
-        if (dir == Direction.DOWN && slotType == EnergyMachineInventoryTypes.CHARGE) {
+        if (dir == Direction.DOWN && slotType == EnergyMachineInventoryType.CHARGE) {
             var item = stack.getItem();
             return item instanceof ChargeableItem chargeableItem && !chargeableItem.hasEnergy(stack);
         }
@@ -199,8 +202,8 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
             stack.setCount(this.getMaxCountPerStack());
         }
         var slotType = inventory.getType(slot);
-        if (slotType == EnergyMachineInventoryTypes.SOURCE && !sameItem) {
-            this.cookTimeTotal = getCookTime(world);
+        if (slotType == EnergyMachineInventoryType.SOURCE && !sameItem) {
+            this.cookTimeTotal = getCookTimeTotal(world);
             this.cookTime = 0;
             this.markDirty();
         }
@@ -219,10 +222,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     public boolean isValid(int slot,
                            @NotNull ItemStack stack) {
         var slotType = inventory.getType(slot);
-        if (slotType == EnergyMachineInventoryTypes.OUTPUT) {
+        if (slotType == EnergyMachineInventoryType.OUTPUT) {
             return false;
         }
-        if(slotType == EnergyMachineInventoryTypes.CHARGE) {
+        if(slotType == EnergyMachineInventoryType.CHARGE) {
             var item = stack.getItem();
             if(item instanceof ChargeableItem chargeableItem) {
                 return chargeableItem.hasEnergy(stack);
@@ -257,7 +260,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
 
     @Override
     public void provideRecipeInputs(@NotNull RecipeMatcher finder) {
-        var sources = this.inventory.getInventory(EnergyMachineInventoryTypes.SOURCE);
+        var sources = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         if(sources == null) {
             return;
         }
@@ -331,6 +334,44 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     }
 
     /**
+     * Add event listeners
+     *
+     * @param event event type
+     * @param listener event listener
+     */
+    public void addListener(@NotNull EnergyMachineEvent event,
+                            @NotNull Runnable listener) {
+        var listeners = this.eventListeners.computeIfAbsent(event, it -> new ArrayList<>());
+        listeners.add(listener);
+    }
+
+    /**
+     * Remove event listeners
+     *
+     * @param event event type
+     * @param listener event listener
+     */
+    public void removeListener(@NotNull EnergyMachineEvent event,
+                               @NotNull Runnable listener) {
+        var listeners = this.eventListeners.computeIfAbsent(event, it -> new ArrayList<>());
+        listeners.remove(listener);
+    }
+
+    /**
+     * Dispatch event
+     *
+     * @param event event type
+     */
+    protected void dispatch(@NotNull EnergyMachineEvent event) {
+        var listeners = this.eventListeners.get(event);
+        if(listeners != null) {
+            for (var listener : listeners) {
+                listener.run();
+            }
+        }
+    }
+
+    /**
      * Drop experience on recipe use
      *
      * @param world game world
@@ -346,15 +387,6 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
             ExperienceUtils.drop(world, pos, id, cookingRecipe.getExperience());
         }
     }
-
-    /**
-     * Method for calculation of cooking time.<br/>
-     * Calculation can be based of recipe, some modifiers or even time of day.
-     *
-     * @param world game world
-     * @return cook time
-     */
-    abstract public int getCookTime(@NotNull World world);
 
     /**
      * Method return amount of energy that used every cooking tick
@@ -380,7 +412,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
      */
     protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
                                                                                @NotNull World world) {
-        var sourceInventory = (C) inventory.getInventory(EnergyMachineInventoryTypes.SOURCE);
+        var sourceInventory = (C) inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         if(sourceInventory == null) {
             return null;
         }
@@ -399,83 +431,57 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         return 1;
     }
 
-    protected static boolean canAcceptRecipeOutput(int slot,
-                                                   @NotNull CombinedInventory<EnergyMachineInventoryTypes> combinedInventory,
-                                                   @NotNull World world,
-                                                   @NotNull Recipe<?> recipe,
-                                                   int count) {
-        var sourceStack = combinedInventory.getStack(EnergyMachineInventoryTypes.SOURCE, slot);
-        if (sourceStack.isEmpty()) {
-            return false;
-        }
-        var outputStack = recipe.getOutput(world.getRegistryManager());
-        if (outputStack.isEmpty()) {
-            return false;
-        }
-        var outputSlotStack = combinedInventory.getStack(EnergyMachineInventoryTypes.OUTPUT, slot);
-        if (outputSlotStack.isEmpty()) {
-            return true;
-        }
-        if (!outputSlotStack.isItemEqual(outputStack)) {
-            return false;
-        }
-        if (outputSlotStack.getCount() < count &&
-                outputSlotStack.getCount() < outputSlotStack.getMaxCount()) {
-            return true;
-        }
-        return outputSlotStack.getCount() < outputStack.getMaxCount();
+    /**
+     * Method for calculation of total cooking time.<br/>
+     * Calculation can be based of recipe, some modifiers or even time of day.
+     *
+     * @param world game world
+     * @return total cook time
+     */
+    abstract public int getCookTimeTotal(@NotNull World world);
+
+    /**
+     * Method return cook time increment
+     *
+     * @param world game world
+     * @return cook time increment
+     */
+    public int getCookTimeInc(@NotNull World world) {
+        return 1;
     }
 
-    protected static boolean craftRecipe(int slot,
-                                         @NotNull CombinedInventory<EnergyMachineInventoryTypes> combinedInventory,
-                                         @NotNull World world,
-                                         @NotNull Recipe<Inventory> recipe,
-                                         int decrement,
-                                         int maxCount) {
-        if (!canAcceptRecipeOutput(slot, combinedInventory, world, recipe, maxCount)) {
-            return false;
-        }
-        var sourceStack = combinedInventory.getStack(EnergyMachineInventoryTypes.SOURCE, slot);
-        var registryManager = world.getRegistryManager();
-        var recipeStack = recipe.getOutput(registryManager);
-        var outputStack = combinedInventory.getStack(EnergyMachineInventoryTypes.OUTPUT, slot);
-        if (outputStack.isEmpty()) {
-            combinedInventory.setStack(EnergyMachineInventoryTypes.OUTPUT, slot, recipeStack.copy());
-        } else if (outputStack.isOf(recipeStack.getItem())) {
-            outputStack.increment(recipeStack.getCount());
-        }
-        sourceStack.decrement(decrement);
-        return true;
-    }
-
-    protected static <T extends AbstractCookingRecipe> int getCookTime(@NotNull World world,
-                                                                       @NotNull RecipeType<T> recipeType,
-                                                                       @NotNull Inventory inventory) {
-        return world.getRecipeManager()
-                .getFirstMatch(recipeType, inventory, world)
-                .map(AbstractCookingRecipe::getCookTime)
-                .orElse(200);
-    }
-
-    protected static boolean charge(@NotNull AbstractEnergyMachineBlockEntity blockEntity) {
-        var chargeStack = blockEntity.inventory.getStack(EnergyMachineInventoryTypes.CHARGE, 0);
+    /**
+     * Charge machine by item in charging slot
+     *
+     * @return true - machine was charged, false - otherwise
+     */
+    protected boolean charge() {
+        var chargeStack = inventory.getStack(EnergyMachineInventoryType.CHARGE, 0);
         var chargeItem = chargeStack.getItem();
         if (!chargeStack.isEmpty() && (chargeItem instanceof ChargeableItem chargeableItem)) {
             int charge = chargeableItem.getCharge(chargeStack);
             if (charge > 0) {
                 int transferred = Math.min(
-                        blockEntity.block.getEnergyLevel().to,
-                        Math.min(charge, blockEntity.energyContainer.getFreeSpace().intValue())
+                        block.getEnergyLevel().to,
+                        Math.min(charge, energyContainer.getFreeSpace().intValue())
                 );
                 chargeableItem.discharge(chargeStack, transferred);
-                blockEntity.energyContainer.add(transferred);
+                energyContainer.add(transferred);
                 return true;
             }
         }
         return false;
     }
 
-    public static <T extends Recipe<Inventory>> void simpleCookingTick(
+    /**
+     * Default implementation of machine cooking tick
+     *
+     * @param world game world
+     * @param pos block position
+     * @param state block state
+     * @param blockEntity block entity
+     */
+    public static void simpleCookingTick(
             @NotNull World world,
             @NotNull BlockPos pos,
             @NotNull BlockState state,
@@ -489,66 +495,70 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         var working = blockEntity.working;
         blockEntity.working = false;
 
-        if(charge(blockEntity)) {
+        if(blockEntity.charge()) {
             changed = true;
         }
 
         if (!blockEntity.energyContainer.hasAtLeast(requiredEnergy)) {
-            updateState(working, blockEntity, state, world, pos, changed);
+            blockEntity.updateState(working, state, world, pos, changed);
             return;
         }
         var recipe = blockEntity.getRecipe(world);
         if (recipe == null) {
-            updateState(working, blockEntity, state, world, pos, changed);
+            blockEntity.updateState(working, state, world, pos, changed);
             return;
         }
         var maxCountPerStack = blockEntity.getMaxCountPerStack();
         boolean energyUsed = false;
         boolean canCook = false;
         boolean cooked = false;
+        int cookTimeInc = blockEntity.getCookTimeInc(world);
         for (int i = 0; i < blockEntity.slots; i++) {
-            if (!canAcceptRecipeOutput(i, blockEntity.inventory, world, recipe, maxCountPerStack)) {
+            if (!EnergyMachineUtils.canAcceptRecipeOutput(i, blockEntity.inventory, world, recipe, maxCountPerStack)) {
                 continue;
             }
             canCook = true;
             if(!energyUsed) {
                 if(blockEntity.energyContainer.subtract(requiredEnergy)) {
                     energyUsed = true;
-                    ++blockEntity.cookTime;
+                    blockEntity.cookTime += cookTimeInc;
                     blockEntity.working = true;
                     if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
                         blockEntity.cookTime = 0;
-                        blockEntity.cookTimeTotal = blockEntity.getCookTime(world);
+                        blockEntity.cookTimeTotal = blockEntity.getCookTimeTotal(world);
                         cooked = true;
                     }
                     changed = true;
+                    blockEntity.dispatch(EnergyMachineEvent.ENERGY_USED);
                 } else {
+                    blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
                     break;
                 }
             }
             if (cooked) {
                 int decrement = blockEntity.calculateDecrement(recipe);
-                if (craftRecipe(i, blockEntity.inventory, world, recipe, decrement, maxCountPerStack)) {
+                if (EnergyMachineUtils.craftRecipe(i, blockEntity.inventory, world, recipe, decrement, maxCountPerStack)) {
                     blockEntity.setLastRecipe(recipe);
                 }
+                blockEntity.dispatch(EnergyMachineEvent.COOKED);
             }
         }
         if(!canCook) {
             blockEntity.cookTime = 0;
+            blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_COOK);
         }
 
         boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasAtLeast(requiredEnergy);
-        updateState(working, blockEntity, state, world, pos, energyChanged|| changed);
+        blockEntity.updateState(working, state, world, pos, energyChanged|| changed);
     }
 
-    private static void updateState(boolean wasWork,
-                                    @NotNull AbstractEnergyMachineBlockEntity blockEntity,
+    protected void updateState(boolean wasWork,
                                     @NotNull BlockState state,
                                     @NotNull World world,
                                     @NotNull BlockPos pos,
                                     boolean markDirty) {
-        if (wasWork != blockEntity.working) {
-            state = state.with(AbstractEnergyMachineBlock.WORKING, blockEntity.working);
+        if (wasWork != working) {
+            state = state.with(AbstractEnergyMachineBlock.WORKING, working);
             world.setBlockState(pos, state, Block.NOTIFY_ALL);
             markDirty = true;
         }
@@ -560,10 +570,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     @Override
     public boolean canConsume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
         if(CoreTags.isChargeable(itemStack)) {
-            var chargeStack = inventory.getStack(EnergyMachineInventoryTypes.CHARGE, 0);
+            var chargeStack = inventory.getStack(EnergyMachineInventoryType.CHARGE, 0);
             return chargeStack.isEmpty() || PipeUtils.canMergeItems(chargeStack, itemStack);
         }
-        var sourceInventory = inventory.getInventory(EnergyMachineInventoryTypes.SOURCE);
+        var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         if(sourceInventory == null) {
             return false;
         }
@@ -583,19 +593,19 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         }
         markDirty();
         if(CoreTags.isChargeable(itemStack)) {
-            var chargeStack = inventory.getStack(EnergyMachineInventoryTypes.CHARGE, 0);
+            var chargeStack = inventory.getStack(EnergyMachineInventoryType.CHARGE, 0);
             if(chargeStack.isEmpty()) {
-                inventory.setStack(EnergyMachineInventoryTypes.CHARGE, 0, itemStack);
+                inventory.setStack(EnergyMachineInventoryType.CHARGE, 0, itemStack);
                 return ItemStack.EMPTY;
             }
             return PipeUtils.mergeItems(chargeStack, itemStack);
         }
-        return inventory.addStack(EnergyMachineInventoryTypes.SOURCE, itemStack);
+        return inventory.addStack(EnergyMachineInventoryType.SOURCE, itemStack);
     }
 
     @Override
     public @NotNull List<ItemStack> canSupply(@NotNull Direction direction) {
-        var outputInventory = inventory.getInventory(EnergyMachineInventoryTypes.OUTPUT);
+        var outputInventory = inventory.getInventory(EnergyMachineInventoryType.OUTPUT);
         if(outputInventory == null) {
             return Collections.emptyList();
         }
@@ -608,10 +618,10 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
 
     @Override
     public boolean supply(@NotNull ItemStack requested, @NotNull Direction direction) {
-        if (!inventory.canRemoveItem(EnergyMachineInventoryTypes.OUTPUT, requested.getItem(), requested.getCount())) {
+        if (!inventory.canRemoveItem(EnergyMachineInventoryType.OUTPUT, requested.getItem(), requested.getCount())) {
             return false;
         }
-        var removed = inventory.removeItem(EnergyMachineInventoryTypes.OUTPUT, requested.getItem(),
+        var removed = inventory.removeItem(EnergyMachineInventoryType.OUTPUT, requested.getItem(),
                 requested.getCount());
         markDirty();
         return removed.getCount() == requested.getCount();
@@ -619,7 +629,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
 
     @Override
     public void returnStack(@NotNull ItemStack requested, @NotNull Direction direction) {
-        inventory.addStack(EnergyMachineInventoryTypes.OUTPUT, requested);
+        inventory.addStack(EnergyMachineInventoryType.OUTPUT, requested);
         markDirty();
     }
 
