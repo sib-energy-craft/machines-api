@@ -195,16 +195,19 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         if (world == null) {
             return;
         }
-        var itemStack = this.inventory.getStack(slot);
-        var sameItem = !stack.isEmpty() && stack.isItemEqual(itemStack) && ItemStack.areNbtEqual(stack, itemStack);
+        var inventoryStack = this.inventory.getStack(slot);
+        var sameItem = inventoryStack.isEmpty() ||
+                !stack.isEmpty() && stack.isItemEqual(inventoryStack) && ItemStack.areNbtEqual(stack, inventoryStack);
         this.inventory.setStack(slot, stack);
         if (stack.getCount() > this.getMaxCountPerStack()) {
             stack.setCount(this.getMaxCountPerStack());
         }
         var slotType = inventory.getType(slot);
-        if (slotType == EnergyMachineInventoryType.SOURCE && !sameItem) {
-            this.cookTimeTotal = getCookTimeTotal(world);
-            this.cookTime = 0;
+        if (slotType == EnergyMachineInventoryType.SOURCE) {
+            if(!sameItem) {
+                this.cookTimeTotal = getCookTimeTotal(world);
+                this.cookTime = 0;
+            }
             this.markDirty();
         }
     }
