@@ -399,13 +399,16 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     /**
      * Get current recipe
      *
+     * @param world game world
+     * @param slot slot index
+     *
      * @return recipe
      * @since 0.0.16
      */
-    abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world);
+    abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world, int slot);
 
     /**
-     * Get current recipe
+     * Get recipe using all source inventory
      *
      * @return recipe
      * @since 0.0.16
@@ -418,6 +421,26 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         }
         var recipeManager = world.getRecipeManager();
         return recipeManager.getFirstMatch(recipeType, sourceInventory, world)
+                .orElse(null);
+    }
+
+    /**
+     * Get recipe using only passed slot
+     *
+     * @return recipe
+     * @since 0.0.20
+     */
+    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
+                                                                               @NotNull World world,
+                                                                               int slot) {
+        var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
+        if(sourceInventory == null) {
+            return null;
+        }
+        var sourceStack = sourceInventory.getStack(slot);
+        var craftingInventory = (C) new SimpleInventory(sourceStack);
+        var recipeManager = world.getRecipeManager();
+        return recipeManager.getFirstMatch(recipeType, craftingInventory, world)
                 .orElse(null);
     }
 
@@ -504,17 +527,16 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
             blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
             return;
         }
-        var recipe = blockEntity.getRecipe(world);
-        if (recipe == null) {
-            blockEntity.updateState(working, state, world, pos, changed);
-            return;
-        }
         var maxCountPerStack = blockEntity.getMaxCountPerStack();
         boolean energyUsed = false;
         boolean canCook = false;
         boolean cooked = false;
         int cookTimeInc = blockEntity.getCookTimeInc(world);
         for (int i = 0; i < blockEntity.slots; i++) {
+            var recipe = blockEntity.getRecipe(world, i);
+            if (recipe == null) {
+                continue;
+            }
             if (!EnergyMachineUtils.canAcceptRecipeOutput(i, blockEntity.inventory, world, recipe, maxCountPerStack)) {
                 continue;
             }
