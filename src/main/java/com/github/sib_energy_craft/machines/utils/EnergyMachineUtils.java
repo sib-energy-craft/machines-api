@@ -17,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class EnergyMachineUtils {
+
     /**
      * Calculate cooking time for abstract cooking recipe
      *

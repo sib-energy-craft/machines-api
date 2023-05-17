@@ -8,12 +8,12 @@ import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
+import com.github.sib_energy_craft.machines.screen.EnergyMachinePropertyMap;
 import com.github.sib_energy_craft.machines.utils.EnergyMachineUtils;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
 import com.github.sib_energy_craft.pipes.utils.PipeUtils;
-import com.github.sib_energy_craft.sec_utils.screen.PropertyMap;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
@@ -45,13 +45,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperty.*;
+import static com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperties.*;
 
 /**
  * @since 0.0.1
  * @author sibmaks
  */
-public abstract class AbstractEnergyMachineBlockEntity extends LockableContainerBlockEntity
+public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
+        extends LockableContainerBlockEntity
         implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer, ItemConsumer, ItemSupplier {
     private static final Energy ENERGY_ONE = Energy.of(1);
 
@@ -60,8 +61,8 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     protected CleanEnergyContainer energyContainer;
     protected boolean working;
 
-    protected final AbstractEnergyMachineBlock block;
-    protected final PropertyMap<EnergyMachineProperty> propertyMap;
+    protected final B block;
+    protected final EnergyMachinePropertyMap propertyMap;
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
     protected final CombinedInventory<EnergyMachineInventoryType> inventory;
     private final EnumMap<EnergyMachineEvent, List<Runnable>> eventListeners;
@@ -74,24 +75,24 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
     public AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
                                             @NotNull BlockPos blockPos,
                                             @NotNull BlockState blockState,
-                                            @NotNull AbstractEnergyMachineBlock block) {
+                                            @NotNull B block) {
         this(blockEntityType, blockPos, blockState, block, 1);
     }
 
     public AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
                                             @NotNull BlockPos blockPos,
                                             @NotNull BlockState blockState,
-                                            @NotNull AbstractEnergyMachineBlock block,
+                                            @NotNull B block,
                                             int slots) {
         super(blockEntityType, blockPos, blockState);
         this.block = block;
         this.recipesUsed = new Object2IntOpenHashMap<>();
 
-        var enumMap = new EnumMap<EnergyMachineInventoryType, Inventory>(EnergyMachineInventoryType.class);
-        enumMap.put(EnergyMachineInventoryType.SOURCE, new SimpleInventory(slots));
-        enumMap.put(EnergyMachineInventoryType.CHARGE, new SimpleInventory(1));
-        enumMap.put(EnergyMachineInventoryType.OUTPUT, new SimpleInventory(slots));
-        this.inventory = new CombinedInventory<>(enumMap);
+        var typedInventoryMap = new EnumMap<EnergyMachineInventoryType, Inventory>(EnergyMachineInventoryType.class);
+        typedInventoryMap.put(EnergyMachineInventoryType.SOURCE, new SimpleInventory(slots));
+        typedInventoryMap.put(EnergyMachineInventoryType.CHARGE, new SimpleInventory(1));
+        typedInventoryMap.put(EnergyMachineInventoryType.OUTPUT, new SimpleInventory(slots));
+        this.inventory = new CombinedInventory<>(typedInventoryMap);
 
         this.slots = slots;
         var sourceSlots = IntStream.range(0, slots).boxed().toList();
@@ -101,12 +102,12 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         this.bottomSlots = outputSlots.stream().mapToInt(it -> it).toArray();
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
-        this.propertyMap = new PropertyMap<>(EnergyMachineProperty.class);
+        this.propertyMap = new EnergyMachinePropertyMap();
         this.propertyMap.add(COOKING_TIME, () -> cookTime);
         this.propertyMap.add(COOKING_TIME_TOTAL, () -> cookTimeTotal);
-        this.propertyMap.add(CHARGE, () -> this.energyContainer.getCharge().intValue());
-        this.propertyMap.add(MAX_CHARGE, () -> this.energyContainer.getMaxCharge().intValue());
-        this.eventListeners = new EnumMap<EnergyMachineEvent, List<Runnable>>(EnergyMachineEvent.class);
+        this.propertyMap.add(CHARGE, () -> energyContainer.getCharge().intValue());
+        this.propertyMap.add(MAX_CHARGE, () -> energyContainer.getMaxCharge().intValue());
+        this.eventListeners = new EnumMap<>(EnergyMachineEvent.class);
     }
 
     @Override
@@ -511,7 +512,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
             @NotNull World world,
             @NotNull BlockPos pos,
             @NotNull BlockState state,
-            @NotNull AbstractEnergyMachineBlockEntity blockEntity) {
+            @NotNull AbstractEnergyMachineBlockEntity<?> blockEntity) {
         if (world.isClient) {
             return;
         }
@@ -534,7 +535,6 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
         boolean energyUsed = false;
         boolean canCook = false;
         boolean cooked = false;
-        int cookTimeInc = blockEntity.getCookTimeInc(world);
         for (int i = 0; i < blockEntity.slots; i++) {
             var recipe = blockEntity.getRecipe(world, i);
             if (recipe == null) {
@@ -547,6 +547,7 @@ public abstract class AbstractEnergyMachineBlockEntity extends LockableContainer
             if(!energyUsed) {
                 if(blockEntity.energyContainer.subtract(requiredEnergy)) {
                     energyUsed = true;
+                    int cookTimeInc = blockEntity.getCookTimeInc(world);
                     blockEntity.cookTime += cookTimeInc;
                     blockEntity.working = true;
                     if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {

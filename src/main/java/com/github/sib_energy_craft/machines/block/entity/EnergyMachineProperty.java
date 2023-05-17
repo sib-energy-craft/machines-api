@@ -1,12 +1,16 @@
 package com.github.sib_energy_craft.machines.block.entity;
 
 /**
- * @since 0.0.1
  * @author sibmaks
+ * @since 0.0.24
  */
-public enum EnergyMachineProperty {
-    COOKING_TIME,
-    COOKING_TIME_TOTAL,
-    CHARGE,
-    MAX_CHARGE
+public interface EnergyMachineProperty {
+
+    /**
+     * Get property index
+     *
+     * @return property index
+     */
+    int ordinal();
+
 }

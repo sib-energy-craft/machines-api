@@ -35,6 +35,20 @@ public class MultiSlotMachineLayoutManager implements SlotLayoutManager {
         this.outputSlots = outputSlots;
     }
 
+    public MultiSlotMachineLayoutManager(int quickAccessX, int quickAccessY,
+                                        int playerInventoryX, int playerInventoryY,
+                                        int sourceSlotX, int sourceSlotY,
+                                        int chargeSlotX, int chargeSlotY,
+                                        int outputSlotX, int outputSlotY) {
+        this(
+                quickAccessX, quickAccessY,
+                playerInventoryX, playerInventoryY,
+                new Vector2i[]{new Vector2i(sourceSlotX, sourceSlotY)},
+                chargeSlotX, chargeSlotY,
+                new Vector2i[]{new Vector2i(outputSlotX, outputSlotY)}
+        );
+    }
+
     @Override
     public @NotNull Vector2i getSlotPosition(@NotNull SlotType slotType, int typeIndex, int inventoryIndex) {
         if(slotType == SlotTypes.QUICK_ACCESS) {
