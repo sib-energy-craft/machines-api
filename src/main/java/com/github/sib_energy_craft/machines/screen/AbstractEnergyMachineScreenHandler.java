@@ -3,6 +3,7 @@ package com.github.sib_energy_craft.machines.screen;
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperty;
+import com.github.sib_energy_craft.machines.screen.layout.SlotLayoutManager;
 import com.github.sib_energy_craft.sec_utils.screen.SlotsScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupMetaBuilder;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMeta;
@@ -34,17 +35,17 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
-                                                 @NotNull VisualSettings visualSettings) {
-        this(type, syncId, playerInventory, 1, visualSettings);
+                                                 @NotNull SlotLayoutManager slotLayoutManager) {
+        this(type, syncId, playerInventory, 1, slotLayoutManager);
     }
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
                                                  int slotCount,
-                                                 @NotNull VisualSettings visualSettings) {
+                                                 @NotNull SlotLayoutManager slotLayoutManager) {
         this(type, syncId, playerInventory, new SimpleInventory(1 + slotCount * 2), new ArrayPropertyDelegate(4),
-                slotCount, visualSettings);
+                slotCount, slotLayoutManager);
     }
 
 
@@ -53,8 +54,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                                                  @NotNull PlayerInventory playerInventory,
                                                  @NotNull Inventory inventory,
                                                  @NotNull PropertyDelegate propertyDelegate,
-                                                 @NotNull VisualSettings visualSettings) {
-        this(type, syncId, playerInventory, inventory, propertyDelegate, 1, visualSettings);
+                                                 @NotNull SlotLayoutManager slotLayoutManager) {
+        this(type, syncId, playerInventory, inventory, propertyDelegate, 1, slotLayoutManager);
     }
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
@@ -63,19 +64,19 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                                                  @NotNull Inventory inventory,
                                                  @NotNull PropertyDelegate propertyDelegate,
                                                  int slotCount,
-                                                 @NotNull VisualSettings visualSettings) {
+                                                 @NotNull SlotLayoutManager slotLayoutManager) {
         super(type, syncId);
         checkSize(inventory, 1 + slotCount * 2);
         checkDataCount(propertyDelegate, 4);
         this.inventory = inventory;
         this.propertyDelegate = propertyDelegate;
         this.world = playerInventory.player.world;
-        this.slotGroupsMeta = buildSlots(visualSettings, slotCount, playerInventory, inventory);
+        this.slotGroupsMeta = buildSlots(slotLayoutManager, slotCount, playerInventory, inventory);
         this.slotCount = slotCount;
         this.addProperties(propertyDelegate);
     }
 
-    private @NotNull SlotGroupsMeta buildSlots(@NotNull VisualSettings vs,
+    private @NotNull SlotGroupsMeta buildSlots(@NotNull SlotLayoutManager slotLayoutManager,
                                                int slots,
                                                @NotNull PlayerInventory playerInventory,
                                                @NotNull Inventory inventory) {
@@ -87,7 +88,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
             var slotQuickAccessGroupBuilder = SlotGroupMetaBuilder.builder(SlotTypes.QUICK_ACCESS);
             for (int i = 0; i < quickAccessSlots; ++i) {
                 slotQuickAccessGroupBuilder.addSlot(globalSlotIndex++, i);
-                var slot = new Slot(playerInventory, i, vs.quickAccessX() + i * 18, vs.quickAccessY());
+                var pos = slotLayoutManager.getSlotPosition(SlotTypes.QUICK_ACCESS, i, i);
+                var slot = new Slot(playerInventory, i, pos.x, pos.y);
                 this.addSlot(slot);
             }
             var quickAccessSlotGroup = slotQuickAccessGroupBuilder.build();
@@ -100,7 +102,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                 for (int j = 0; j < 9; ++j) {
                     int index = j + i * 9 + quickAccessSlots;
                     slotPlayerGroupBuilder.addSlot(globalSlotIndex++, index);
-                    var slot = new Slot(playerInventory, index, vs.playerInventoryX() + j * 18, vs.playerInventoryY() + i * 18);
+                    var pos = slotLayoutManager.getSlotPosition(SlotTypes.PLAYER_INVENTORY, j + i * 9, index);
+                    var slot = new Slot(playerInventory, index, pos.x, pos.y);
                     this.addSlot(slot);
                 }
             }
@@ -112,7 +115,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.SOURCE);
             for (int i = 0; i < slots; ++i) {
                 slotGroupBuilder.addSlot(globalSlotIndex++, i);
-                var slot = new Slot(inventory, i, vs.sourceSlotsX() + i * 18, vs.sourceSlotsY());
+                var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.SOURCE, i, i);
+                var slot = new Slot(inventory, i, pos.x, pos.y);
                 this.addSlot(slot);
             }
             var slotGroup = slotGroupBuilder.build();
@@ -122,7 +126,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.CHARGE);
             slotGroupBuilder.addSlot(globalSlotIndex++, slots);
-            var chargeSlot = new ChargeSlot(inventory, slots, vs.chargeSlotX(), vs.chargeSlotY(), false);
+            var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.CHARGE, 0, slots);
+            var chargeSlot = new ChargeSlot(inventory, slots, pos.x, pos.y, false);
             this.addSlot(chargeSlot);
             var slotGroup = slotGroupBuilder.build();
             slotGroupsBuilder.add(slotGroup);
@@ -131,8 +136,10 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.OUTPUT);
             for (int i = 0; i < slots; ++i) {
-                slotGroupBuilder.addSlot(globalSlotIndex++, i);
-                var slot = new Slot(inventory, slots + 1 + i, vs.outputSlotsX() + i * 18, vs.outputSlotsY());
+                int index = slots + 1 + i;
+                slotGroupBuilder.addSlot(globalSlotIndex++, index);
+                var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.OUTPUT, i, index);
+                var slot = new Slot(inventory, index, pos.x, pos.y);
                 this.addSlot(slot);
             }
 
