@@ -45,13 +45,13 @@ public class MultiSlotMachineLayoutManager implements SlotLayoutManager {
             int j = typeIndex - i * 9;
             return new Vector2i(playerInventoryX + j * 18, playerInventoryY + i * 18);
         }
-        if(slotType == EnergyMachineSlotTypes.SOURCE && typeIndex > 0 && typeIndex < sourceSlots.length) {
+        if(slotType == EnergyMachineSlotTypes.SOURCE && typeIndex >= 0 && typeIndex < sourceSlots.length) {
             return sourceSlots[typeIndex];
         }
         if(slotType == EnergyMachineSlotTypes.CHARGE) {
             return chargeSlot;
         }
-        if(slotType == EnergyMachineSlotTypes.OUTPUT && typeIndex > 0 && typeIndex < outputSlots.length) {
+        if(slotType == EnergyMachineSlotTypes.OUTPUT && typeIndex >= 0 && typeIndex < outputSlots.length) {
             return outputSlots[typeIndex];
         }
         return new Vector2i(0, 0);
