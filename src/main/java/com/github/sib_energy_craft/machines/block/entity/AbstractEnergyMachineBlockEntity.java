@@ -197,6 +197,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             return;
         }
         var inventoryStack = this.inventory.getStack(slot);
+        var sourceInventory = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
+        var wasSourceEmpty = sourceInventory != null && sourceInventory.isEmpty();
+
         var sameItem = inventoryStack.isEmpty() ||
                 !stack.isEmpty() && stack.isItemEqual(inventoryStack) && ItemStack.areNbtEqual(stack, inventoryStack);
         this.inventory.setStack(slot, stack);
@@ -205,11 +208,13 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         }
         var slotType = inventory.getType(slot);
         if (slotType == EnergyMachineInventoryType.SOURCE) {
-            if(!sameItem) {
+            if(wasSourceEmpty || !sameItem) {
                 this.cookTimeTotal = getCookTimeTotal(world);
+            }
+            if(!sameItem) {
                 this.cookTime = 0;
             }
-            this.markDirty();
+            markDirty();
         }
     }
 
