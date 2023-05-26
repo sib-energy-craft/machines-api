@@ -8,12 +8,13 @@ import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
-import com.github.sib_energy_craft.machines.screen.EnergyMachinePropertyMap;
-import com.github.sib_energy_craft.machines.utils.EnergyMachineUtils;
+import com.github.sib_energy_craft.machines.core.ExperienceCreatingMachine;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
 import com.github.sib_energy_craft.pipes.utils.PipeUtils;
+import com.github.sib_energy_craft.screen.property.ScreenPropertyTypes;
+import com.github.sib_energy_craft.screen.property.TypedScreenProperty;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
@@ -45,7 +46,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperties.*;
+import static com.github.sib_energy_craft.machines.utils.EnergyMachineUtils.canAcceptRecipeOutput;
+import static com.github.sib_energy_craft.machines.utils.EnergyMachineUtils.craftRecipe;
 
 /**
  * @since 0.0.1
@@ -53,7 +55,9 @@ import static com.github.sib_energy_craft.machines.block.entity.EnergyMachinePro
  */
 public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
         extends LockableContainerBlockEntity
-        implements SidedInventory, RecipeUnlocker, RecipeInputProvider, EnergyConsumer, ItemConsumer, ItemSupplier {
+        implements SidedInventory, RecipeUnlocker, RecipeInputProvider, ExperienceCreatingMachine,
+        EnergyConsumer,
+        ItemConsumer, ItemSupplier {
     private static final Energy ENERGY_ONE = Energy.of(1);
 
     protected int cookTime;
@@ -62,7 +66,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     protected boolean working;
 
     protected final B block;
-    protected final EnergyMachinePropertyMap propertyMap;
+    protected final List<TypedScreenProperty<?>> typedScreenProperties;
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
     protected final CombinedInventory<EnergyMachineInventoryType> inventory;
     private final EnumMap<EnergyMachineEvent, List<Runnable>> eventListeners;
@@ -102,11 +106,28 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         this.bottomSlots = outputSlots.stream().mapToInt(it -> it).toArray();
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
-        this.propertyMap = new EnergyMachinePropertyMap();
-        this.propertyMap.add(COOKING_TIME, () -> cookTime);
-        this.propertyMap.add(COOKING_TIME_TOTAL, () -> cookTimeTotal);
-        this.propertyMap.add(CHARGE, () -> energyContainer.getCharge().intValue());
-        this.propertyMap.add(MAX_CHARGE, () -> energyContainer.getMaxCharge().intValue());
+        this.typedScreenProperties = List.of(
+                new TypedScreenProperty<>(
+                        EnergyMachineTypedProperties.COOKING_TIME.ordinal(),
+                        ScreenPropertyTypes.INT,
+                        () -> cookTime
+                ),
+                new TypedScreenProperty<>(
+                        EnergyMachineTypedProperties.COOKING_TIME_TOTAL.ordinal(),
+                        ScreenPropertyTypes.INT,
+                        () -> cookTimeTotal
+                ),
+                new TypedScreenProperty<>(
+                        EnergyMachineTypedProperties.CHARGE.ordinal(),
+                        ScreenPropertyTypes.INT,
+                        () -> energyContainer.getCharge().intValue()
+                ),
+                new TypedScreenProperty<>(
+                        EnergyMachineTypedProperties.MAX_CHARGE.ordinal(),
+                        ScreenPropertyTypes.INT,
+                        () -> energyContainer.getMaxCharge().intValue()
+                )
+        );
         this.eventListeners = new EnumMap<>(EnergyMachineEvent.class);
     }
 
@@ -309,11 +330,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         this.energyContainer.add(charge);
     }
 
-    /**
-     * Method can be used for drop experience for last used recipes
-     *
-     * @param player player - crafter
-     */
+    @Override
     public void dropExperienceForRecipesUsed(@NotNull ServerPlayerEntity player) {
         var list = this.getRecipesUsedAndDropExperience(player.getWorld(), player.getPos());
         player.unlockRecipes(list);
@@ -545,7 +562,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             if (recipe == null) {
                 continue;
             }
-            if (!EnergyMachineUtils.canAcceptRecipeOutput(i, blockEntity.inventory, world, recipe, maxCountPerStack)) {
+            if (!canAcceptRecipeOutput(i, blockEntity.inventory, world, recipe, maxCountPerStack)) {
                 continue;
             }
             canCook = true;
@@ -569,7 +586,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             }
             if (cooked) {
                 int decrement = blockEntity.calculateDecrement(recipe);
-                if (EnergyMachineUtils.craftRecipe(i, blockEntity.inventory, world, recipe, decrement, maxCountPerStack)) {
+                if (craftRecipe(i, blockEntity.inventory, world, recipe, decrement, maxCountPerStack)) {
                     blockEntity.setLastRecipe(recipe);
                 }
                 blockEntity.dispatch(EnergyMachineEvent.COOKED);
