@@ -38,7 +38,8 @@ public final class EnergyMachineUtils {
 
     /**
      * Method check can recipe output be applied.<br/>
-     * Slot chose current slot index to cooking
+     * Slot chose current slot index to cooking<br/>
+     * Assuming that machine work with process in mode 1 input to 1 output
      *
      * @param slot slot index
      * @param combinedInventory machine inventory
@@ -50,7 +51,7 @@ public final class EnergyMachineUtils {
     public static boolean canAcceptRecipeOutput(int slot,
                                                 @NotNull CombinedInventory<EnergyMachineInventoryType> combinedInventory,
                                                 @NotNull World world,
-                                                @NotNull Recipe<?> recipe,
+                                                @NotNull Recipe<Inventory> recipe,
                                                 int count) {
         var sourceStack = combinedInventory.getStack(EnergyMachineInventoryType.SOURCE, slot);
         if (sourceStack.isEmpty()) {
@@ -67,11 +68,11 @@ public final class EnergyMachineUtils {
         if (!outputSlotStack.isItemEqual(outputStack)) {
             return false;
         }
-        if (outputSlotStack.getCount() < count &&
-                outputSlotStack.getCount() < outputSlotStack.getMaxCount()) {
+        int outputSlotStackCount = outputSlotStack.getCount();
+        if (outputSlotStackCount < count && outputSlotStackCount < outputSlotStack.getMaxCount()) {
             return true;
         }
-        return outputSlotStack.getCount() < outputStack.getMaxCount();
+        return outputSlotStackCount < outputStack.getMaxCount();
     }
 
     /**

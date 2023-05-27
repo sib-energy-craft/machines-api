@@ -2,20 +2,19 @@ package com.github.sib_energy_craft.machines.screen;
 
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
-import com.github.sib_energy_craft.machines.block.entity.EnergyMachineProperties;
 import com.github.sib_energy_craft.machines.screen.layout.SlotLayoutManager;
+import com.github.sib_energy_craft.screen.TypedPropertyScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.SlotsScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupMetaBuilder;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMeta;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMetaBuilder;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotTypes;
+import lombok.Getter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ArrayPropertyDelegate;
-import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.world.World;
@@ -25,27 +24,36 @@ import org.jetbrains.annotations.NotNull;
  * @since 0.0.4
  * @author sibmaks
  */
-public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHandler {
+public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHandler implements TypedPropertyScreenHandler {
     protected final Inventory inventory;
-    protected final PropertyDelegate propertyDelegate;
     protected final SlotGroupsMeta slotGroupsMeta;
     protected final World world;
-    protected final int slotCount;
+    protected final int sourceSlots;
+    protected final int outputSlots;
+    @Getter
+    protected final EnergyMachineState energyMachineState;
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
                                                  @NotNull SlotLayoutManager slotLayoutManager) {
-        this(type, syncId, playerInventory, 1, slotLayoutManager);
+        this(type, syncId, playerInventory, 1, 1, slotLayoutManager);
     }
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
-                                                 int slotCount,
+                                                 int sourceSlots,
+                                                 int outputSlots,
                                                  @NotNull SlotLayoutManager slotLayoutManager) {
-        this(type, syncId, playerInventory, new SimpleInventory(1 + slotCount * 2), new ArrayPropertyDelegate(4),
-                slotCount, slotLayoutManager);
+        this(type,
+                syncId,
+                playerInventory,
+                new SimpleInventory(1 + sourceSlots + outputSlots),
+                sourceSlots,
+                outputSlots,
+                slotLayoutManager
+        );
     }
 
 
@@ -53,31 +61,30 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
                                                  @NotNull Inventory inventory,
-                                                 @NotNull PropertyDelegate propertyDelegate,
                                                  @NotNull SlotLayoutManager slotLayoutManager) {
-        this(type, syncId, playerInventory, inventory, propertyDelegate, 1, slotLayoutManager);
+        this(type, syncId, playerInventory, inventory, 1, 1, slotLayoutManager);
     }
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
                                                  @NotNull PlayerInventory playerInventory,
                                                  @NotNull Inventory inventory,
-                                                 @NotNull PropertyDelegate propertyDelegate,
-                                                 int slotCount,
+                                                 int sourceSlots,
+                                                 int outputSlots,
                                                  @NotNull SlotLayoutManager slotLayoutManager) {
         super(type, syncId);
-        checkSize(inventory, 1 + slotCount * 2);
-        checkDataCount(propertyDelegate, 4);
+        checkSize(inventory, 1 + sourceSlots + outputSlots);
+        this.energyMachineState = new EnergyMachineState();
         this.inventory = inventory;
-        this.propertyDelegate = propertyDelegate;
         this.world = playerInventory.player.world;
-        this.slotGroupsMeta = buildSlots(slotLayoutManager, slotCount, playerInventory, inventory);
-        this.slotCount = slotCount;
-        this.addProperties(propertyDelegate);
+        this.sourceSlots = sourceSlots;
+        this.outputSlots = outputSlots;
+        this.slotGroupsMeta = buildSlots(slotLayoutManager, sourceSlots, outputSlots, playerInventory, inventory);
     }
 
     private @NotNull SlotGroupsMeta buildSlots(@NotNull SlotLayoutManager slotLayoutManager,
-                                               int slots,
+                                               int sourceSlots,
+                                               int outputSlots,
                                                @NotNull PlayerInventory playerInventory,
                                                @NotNull Inventory inventory) {
         int globalSlotIndex = 0;
@@ -113,7 +120,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
 
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.SOURCE);
-            for (int i = 0; i < slots; ++i) {
+            for (int i = 0; i < sourceSlots; ++i) {
                 slotGroupBuilder.addSlot(globalSlotIndex++, i);
                 var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.SOURCE, i, i);
                 var slot = new Slot(inventory, i, pos.x, pos.y);
@@ -125,9 +132,9 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
 
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.CHARGE);
-            slotGroupBuilder.addSlot(globalSlotIndex++, slots);
-            var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.CHARGE, 0, slots);
-            var chargeSlot = new ChargeSlot(inventory, slots, pos.x, pos.y, false);
+            slotGroupBuilder.addSlot(globalSlotIndex++, sourceSlots);
+            var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.CHARGE, 0, sourceSlots);
+            var chargeSlot = new ChargeSlot(inventory, sourceSlots, pos.x, pos.y, false);
             this.addSlot(chargeSlot);
             var slotGroup = slotGroupBuilder.build();
             slotGroupsBuilder.add(slotGroup);
@@ -135,8 +142,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
 
         {
             var slotGroupBuilder = SlotGroupMetaBuilder.builder(EnergyMachineSlotTypes.OUTPUT);
-            for (int i = 0; i < slots; ++i) {
-                int index = slots + 1 + i;
+            for (int i = 0; i < outputSlots; ++i) {
+                int index = sourceSlots + 1 + i;
                 slotGroupBuilder.addSlot(globalSlotIndex++, index);
                 var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.OUTPUT, i, index);
                 var slot = new Slot(inventory, index, pos.x, pos.y);
@@ -217,8 +224,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return charge progress
      */
     public int getChargeProgress() {
-        int i = getCharge();
-        int j = getMaxCharge();
+        int i = energyMachineState.getCharge();
+        int j = energyMachineState.getMaxCharge();
         if (j == 0 || i == 0) {
             return 0;
         }
@@ -231,8 +238,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return cook progress
      */
     public int getCookProgress(int width) {
-        int i = getCookingTime();
-        int j = getCookingTimeTotal();
+        int i = energyMachineState.getCookingTime();
+        int j = energyMachineState.getCookingTimeTotal();
         if (j == 0 || i == 0) {
             return 0;
         }
@@ -245,7 +252,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return charge
      */
     public int getCharge() {
-        return propertyDelegate.get(EnergyMachineProperties.CHARGE.ordinal());
+        return energyMachineState.getCharge();
     }
 
     /**
@@ -254,7 +261,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return max charge
      */
     public int getMaxCharge() {
-        return propertyDelegate.get(EnergyMachineProperties.MAX_CHARGE.ordinal());
+        return energyMachineState.getMaxCharge();
     }
 
     /**
@@ -263,7 +270,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return cooking time
      */
     public int getCookingTime() {
-        return propertyDelegate.get(EnergyMachineProperties.COOKING_TIME.ordinal());
+        return energyMachineState.getCookingTime();
     }
 
     /**
@@ -272,7 +279,12 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
      * @return total cooking time
      */
     public int getCookingTimeTotal() {
-        return propertyDelegate.get(EnergyMachineProperties.COOKING_TIME_TOTAL.ordinal());
+        return energyMachineState.getCookingTimeTotal();
+    }
+
+    @Override
+    public <V> void onTypedPropertyChanged(int index, V value) {
+        energyMachineState.changeProperty(index, value);
     }
 }
 

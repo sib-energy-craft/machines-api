@@ -1,6 +1,6 @@
 package com.github.sib_energy_craft.machines.screen.slot;
 
-import com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMachineBlockEntity;
+import com.github.sib_energy_craft.machines.core.ExperienceCreatingMachine;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
@@ -54,8 +54,8 @@ public class OutputSlot extends Slot {
     protected void onCrafted(@NotNull ItemStack stack) {
         stack.onCraft(this.player.world, this.player, this.amount);
         if (this.player instanceof ServerPlayerEntity serverPlayer &&
-                this.inventory instanceof AbstractEnergyMachineBlockEntity machineBlockEntity) {
-            machineBlockEntity.dropExperienceForRecipesUsed(serverPlayer);
+                this.inventory instanceof ExperienceCreatingMachine experienceCreatingMachine) {
+            experienceCreatingMachine.dropExperienceForRecipesUsed(serverPlayer);
         }
         this.amount = 0;
     }

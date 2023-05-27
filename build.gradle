@@ -29,6 +29,8 @@ dependencies {
 
     modImplementation("com.github.sib-energy-craft:energy-api:${project.sec_energy_api_version}")
     modImplementation("com.github.sib-energy-craft:sec-utils:${project.sec_utils_version}")
+    modImplementation("com.github.sib-energy-craft:sec-network:${project.sec_network_version}")
+
     modImplementation("com.github.sib-energy-craft:energy-containers-api:${project.sec_energy_containers_api_version}")
     modImplementation("com.github.sib-energy-craft:mod-pipes-api:${project.sec_mod_pipes_api_version}")
 }
