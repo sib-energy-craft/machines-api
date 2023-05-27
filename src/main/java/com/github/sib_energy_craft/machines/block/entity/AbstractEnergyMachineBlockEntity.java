@@ -18,10 +18,11 @@ import com.github.sib_energy_craft.pipes.utils.PipeUtils;
 import com.github.sib_energy_craft.screen.property.ScreenPropertyTypes;
 import com.github.sib_energy_craft.screen.property.TypedScreenProperty;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -50,8 +51,9 @@ import java.util.stream.IntStream;
  * @author sibmaks
  */
 public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
-        extends LockableContainerBlockEntity
+        extends BlockEntity
         implements SidedInventory, RecipeUnlocker, RecipeInputProvider, ExperienceCreatingMachine,
+        ExtendedScreenHandlerFactory,
         EnergyConsumer,
         ItemConsumer, ItemSupplier {
     private static final Energy ENERGY_ONE = Energy.of(1);
@@ -736,10 +738,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      * @param player player
      * @return instance of energy machine screen handler
      */
-    abstract protected <T extends AbstractEnergyMachineScreenHandler> T createScreenHandler(
-            int syncId,
-            @NotNull PlayerInventory playerInventory,
-            @NotNull PlayerEntity player);
+    abstract protected AbstractEnergyMachineScreenHandler createScreenHandler(int syncId,
+                                                                              @NotNull PlayerInventory playerInventory,
+                                                                              @NotNull PlayerEntity player);
 
     @Nullable
     @Override
