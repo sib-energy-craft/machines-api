@@ -3,6 +3,7 @@ package com.github.sib_energy_craft.machines.screen;
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.screen.layout.SlotLayoutManager;
+import com.github.sib_energy_craft.network.PropertyUpdateSyncer;
 import com.github.sib_energy_craft.screen.TypedPropertyScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.SlotsScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupMetaBuilder;
@@ -10,6 +11,7 @@ import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMeta;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotGroupsMetaBuilder;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotTypes;
 import lombok.Getter;
+import lombok.Setter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -32,6 +34,8 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
     protected final int outputSlots;
     @Getter
     protected final EnergyMachineState energyMachineState;
+    @Setter
+    private PropertyUpdateSyncer propertySyncer;
 
     protected AbstractEnergyMachineScreenHandler(@NotNull ScreenHandlerType<?> type,
                                                  int syncId,
@@ -285,6 +289,16 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
     @Override
     public <V> void onTypedPropertyChanged(int index, V value) {
         energyMachineState.changeProperty(index, value);
+    }
+
+    @Override
+    public void sendContentUpdates() {
+        super.sendContentUpdates();
+        var syncer = this.propertySyncer;
+        if (syncer != null) {
+            syncer.run();
+        }
+
     }
 }
 

@@ -9,7 +9,9 @@ import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
 import com.github.sib_energy_craft.machines.core.ExperienceCreatingMachine;
+import com.github.sib_energy_craft.machines.screen.AbstractEnergyMachineScreenHandler;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
+import com.github.sib_energy_craft.network.PropertyUpdateSyncer;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
 import com.github.sib_energy_craft.pipes.utils.PipeUtils;
@@ -21,12 +23,14 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SidedInventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.recipe.*;
+import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -722,5 +726,32 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      */
     public int getCharge() {
         return energyContainer.getCharge().intValue();
+    }
+
+    /**
+     * Create energy machine screen handler
+     *
+     * @param syncId sync id
+     * @param playerInventory player inventory
+     * @param player player
+     * @return instance of energy machine screen handler
+     */
+    abstract protected <T extends AbstractEnergyMachineScreenHandler> T createScreenHandler(
+            int syncId,
+            @NotNull PlayerInventory playerInventory,
+            @NotNull PlayerEntity player);
+
+    @Nullable
+    @Override
+    public final ScreenHandler createMenu(int syncId,
+                                          @NotNull PlayerInventory playerInventory,
+                                          @NotNull PlayerEntity player) {
+        var screenHandler = createScreenHandler(syncId, playerInventory, player);
+        var world = player.world;
+        if(!world.isClient && player instanceof ServerPlayerEntity serverPlayerEntity) {
+            var syncer = new PropertyUpdateSyncer(syncId, serverPlayerEntity, typedScreenProperties);
+            screenHandler.setPropertySyncer(syncer);
+        }
+        return screenHandler;
     }
 }
