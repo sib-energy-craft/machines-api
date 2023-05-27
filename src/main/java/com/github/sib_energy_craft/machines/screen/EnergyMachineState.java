@@ -1,6 +1,6 @@
 package com.github.sib_energy_craft.machines.screen;
 
-import com.github.sib_energy_craft.machines.block.entity.EnergyMachineTypedProperties;
+import com.github.sib_energy_craft.machines.block.entity.property.EnergyMachineTypedProperties;
 import lombok.Getter;
 
 /**

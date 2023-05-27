@@ -8,15 +8,14 @@ import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
+import com.github.sib_energy_craft.machines.block.entity.property.EnergyMachinePropertyMap;
+import com.github.sib_energy_craft.machines.block.entity.property.EnergyMachineTypedProperties;
 import com.github.sib_energy_craft.machines.core.ExperienceCreatingMachine;
 import com.github.sib_energy_craft.machines.screen.AbstractEnergyMachineScreenHandler;
 import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
-import com.github.sib_energy_craft.network.PropertyUpdateSyncer;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
 import com.github.sib_energy_craft.pipes.utils.PipeUtils;
-import com.github.sib_energy_craft.screen.property.ScreenPropertyTypes;
-import com.github.sib_energy_craft.screen.property.TypedScreenProperty;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.Block;
@@ -65,7 +64,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     protected boolean working;
 
     protected final B block;
-    protected final List<TypedScreenProperty<?>> typedScreenProperties;
+    protected final EnergyMachinePropertyMap energyMachinePropertyMap;
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
     protected final CombinedInventory<EnergyMachineInventoryType> inventory;
     private final EnumMap<EnergyMachineEvent, List<Runnable>> eventListeners;
@@ -111,28 +110,14 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         this.bottomSlots = IntStream.range(sourceSlots + 1, sourceSlots + 1 + outputSlots).toArray();
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
-        this.typedScreenProperties = List.of(
-                new TypedScreenProperty<>(
-                        EnergyMachineTypedProperties.COOKING_TIME.ordinal(),
-                        ScreenPropertyTypes.INT,
-                        () -> cookTime
-                ),
-                new TypedScreenProperty<>(
-                        EnergyMachineTypedProperties.COOKING_TIME_TOTAL.ordinal(),
-                        ScreenPropertyTypes.INT,
-                        () -> cookTimeTotal
-                ),
-                new TypedScreenProperty<>(
-                        EnergyMachineTypedProperties.CHARGE.ordinal(),
-                        ScreenPropertyTypes.INT,
-                        () -> energyContainer.getCharge().intValue()
-                ),
-                new TypedScreenProperty<>(
-                        EnergyMachineTypedProperties.MAX_CHARGE.ordinal(),
-                        ScreenPropertyTypes.INT,
-                        () -> energyContainer.getMaxCharge().intValue()
-                )
-        );
+        this.energyMachinePropertyMap = new EnergyMachinePropertyMap();
+        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.COOKING_TIME, () -> cookTime);
+        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.COOKING_TIME_TOTAL, () -> cookTimeTotal);
+        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.CHARGE,
+                () -> energyContainer.getCharge().intValue());
+        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.MAX_CHARGE,
+                () -> energyContainer.getMaxCharge().intValue());
+
         this.eventListeners = new EnumMap<>(EnergyMachineEvent.class);
     }
 
@@ -751,7 +736,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         var screenHandler = createScreenHandler(syncId, playerInventory, player);
         var world = player.world;
         if(!world.isClient && player instanceof ServerPlayerEntity serverPlayerEntity) {
-            var syncer = new PropertyUpdateSyncer(syncId, serverPlayerEntity, typedScreenProperties);
+            var syncer = energyMachinePropertyMap.createSyncer(syncId, serverPlayerEntity);
             screenHandler.setPropertySyncer(syncer);
         }
         return screenHandler;
