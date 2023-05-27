@@ -30,6 +30,7 @@ import net.minecraft.inventory.SidedInventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.recipe.*;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -754,5 +755,10 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             screenHandler.setPropertySyncer(syncer);
         }
         return screenHandler;
+    }
+
+    @Override
+    public void writeScreenOpeningData(@NotNull ServerPlayerEntity player,
+                                       @NotNull PacketByteBuf buf) {
     }
 }
