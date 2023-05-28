@@ -3,6 +3,7 @@ package com.github.sib_energy_craft.machines.screen;
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.screen.layout.SlotLayoutManager;
+import com.github.sib_energy_craft.machines.screen.slot.OutputSlot;
 import com.github.sib_energy_craft.machines.screen.slot.SourceSlot;
 import com.github.sib_energy_craft.network.PropertyUpdateSyncer;
 import com.github.sib_energy_craft.screen.TypedPropertyScreenHandler;
@@ -128,7 +129,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
             for (int i = 0; i < sourceSlots; ++i) {
                 slotGroupBuilder.addSlot(globalSlotIndex++, i);
                 var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.SOURCE, i, i);
-                var slot = new Slot(inventory, i, pos.x, pos.y);
+                var slot = new SourceSlot(inventory, i, pos.x, pos.y, this::isUsedInMachine);
                 this.addSlot(slot);
             }
             var slotGroup = slotGroupBuilder.build();
@@ -151,7 +152,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                 int index = sourceSlots + 1 + i;
                 slotGroupBuilder.addSlot(globalSlotIndex++, index);
                 var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.OUTPUT, i, index);
-                var slot = new SourceSlot(inventory, index, pos.x, pos.y, this::isUsedInMachine);
+                var slot = new OutputSlot(playerInventory.player, inventory, index, pos.x, pos.y);
                 this.addSlot(slot);
             }
 
