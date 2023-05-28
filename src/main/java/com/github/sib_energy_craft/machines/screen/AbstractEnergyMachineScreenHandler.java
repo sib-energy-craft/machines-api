@@ -3,6 +3,7 @@ package com.github.sib_energy_craft.machines.screen;
 import com.github.sib_energy_craft.energy_api.screen.ChargeSlot;
 import com.github.sib_energy_craft.energy_api.tags.CoreTags;
 import com.github.sib_energy_craft.machines.screen.layout.SlotLayoutManager;
+import com.github.sib_energy_craft.machines.screen.slot.SourceSlot;
 import com.github.sib_energy_craft.network.PropertyUpdateSyncer;
 import com.github.sib_energy_craft.screen.TypedPropertyScreenHandler;
 import com.github.sib_energy_craft.sec_utils.screen.SlotsScreenHandler;
@@ -150,7 +151,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                 int index = sourceSlots + 1 + i;
                 slotGroupBuilder.addSlot(globalSlotIndex++, index);
                 var pos = slotLayoutManager.getSlotPosition(EnergyMachineSlotTypes.OUTPUT, i, index);
-                var slot = new Slot(inventory, index, pos.x, pos.y);
+                var slot = new SourceSlot(inventory, index, pos.x, pos.y, this::isUsedInMachine);
                 this.addSlot(slot);
             }
 
