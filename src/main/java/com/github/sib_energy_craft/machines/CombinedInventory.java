@@ -177,6 +177,25 @@ public class CombinedInventory<T extends Enum<T>> implements Inventory {
     }
 
     /**
+     * Can stack be inserted into inventory
+     *
+     * @param inventoryType inventory type
+     * @param stack stack to insert
+     * @return not inserted stack
+     */
+    public boolean canInsert(@NotNull T inventoryType,
+                             @NotNull ItemStack stack) {
+        var inventory = getInventory(inventoryType);
+        if(inventory == null) {
+            return false;
+        }
+        if(canAddToExistingSlot(inventory, stack)) {
+            return true;
+        }
+        return canAddToNewSlot(inventory);
+    }
+
+    /**
      * Searches this inventory for the specified item and removes the given amount from this inventory.
      *
      * @param inventoryType inventory type
@@ -239,6 +258,20 @@ public class CombinedInventory<T extends Enum<T>> implements Inventory {
         return have >= count;
     }
 
+    private static boolean canAddToExistingSlot(@NotNull Inventory inventory,
+                                                @NotNull ItemStack stack) {
+        for (int i = 0; i < inventory.size(); ++i) {
+            var itemStack = inventory.getStack(i);
+            if (!ItemStack.canCombine(itemStack, stack)) {
+                continue;
+            }
+            if(canTransfer(inventory, stack, itemStack)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void addToExistingSlot(@NotNull Inventory inventory,
                                           @NotNull ItemStack stack) {
         for (int i = 0; i < inventory.size(); ++i) {
@@ -265,6 +298,17 @@ public class CombinedInventory<T extends Enum<T>> implements Inventory {
         }
     }
 
+    private static boolean canAddToNewSlot(@NotNull Inventory inventory) {
+        for (int i = 0; i < inventory.size(); ++i) {
+            var itemStack = inventory.getStack(i);
+            if (!itemStack.isEmpty()) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
     private static void transfer(@NotNull Inventory inventory,
                                  @NotNull ItemStack source,
                                  @NotNull ItemStack target) {
@@ -275,6 +319,14 @@ public class CombinedInventory<T extends Enum<T>> implements Inventory {
             source.decrement(j);
             inventory.markDirty();
         }
+    }
+
+    private static boolean canTransfer(@NotNull Inventory inventory,
+                                       @NotNull ItemStack source,
+                                       @NotNull ItemStack target) {
+        int i = Math.min(inventory.getMaxCountPerStack(), target.getMaxCount());
+        int j = Math.min(source.getCount(), i - target.getCount());
+        return j > 0;
     }
 
     public void readNbt(@NotNull NbtCompound nbt) {
