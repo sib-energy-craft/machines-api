@@ -82,7 +82,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
         checkSize(inventory, 1 + sourceSlots + outputSlots);
         this.energyMachineState = new EnergyMachineState();
         this.inventory = inventory;
-        this.world = playerInventory.player.world;
+        this.world = playerInventory.player.getWorld();
         this.sourceSlots = sourceSlots;
         this.outputSlots = outputSlots;
         this.slotGroupsMeta = buildSlots(slotLayoutManager, sourceSlots, outputSlots, playerInventory, inventory);

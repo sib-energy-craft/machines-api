@@ -211,8 +211,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         var sourceInventory = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         var wasSourceEmpty = sourceInventory != null && sourceInventory.isEmpty();
 
-        var sameItem = inventoryStack.isEmpty() ||
-                !stack.isEmpty() && stack.isItemEqual(inventoryStack) && ItemStack.areNbtEqual(stack, inventoryStack);
+        var sameItem = inventoryStack.isEmpty() || !stack.isEmpty() && ItemStack.canCombine(stack, inventoryStack);
         this.inventory.setStack(slot, stack);
         int maxCountPerStack = this.getMaxCountPerStack();
         if (stack.getCount() > maxCountPerStack) {
@@ -276,10 +275,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     }
 
     @Override
-    public void unlockLastRecipe(@NotNull PlayerEntity player) {
-    }
-
-    @Override
     public void provideRecipeInputs(@NotNull RecipeMatcher finder) {
         var sources = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         if(sources == null) {
@@ -323,7 +318,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
     @Override
     public void dropExperienceForRecipesUsed(@NotNull ServerPlayerEntity player) {
-        var list = this.getRecipesUsedAndDropExperience(player.getWorld(), player.getPos());
+        var list = this.getRecipesUsedAndDropExperience(player.getServerWorld(), player.getPos());
         player.unlockRecipes(list);
         this.recipesUsed.clear();
     }
@@ -734,7 +729,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
                                           @NotNull PlayerInventory playerInventory,
                                           @NotNull PlayerEntity player) {
         var screenHandler = createScreenHandler(syncId, playerInventory, player);
-        var world = player.world;
+        var world = player.getWorld();
         if(!world.isClient && player instanceof ServerPlayerEntity serverPlayerEntity) {
             var syncer = energyMachinePropertyMap.createSyncer(syncId, serverPlayerEntity);
             screenHandler.setPropertySyncer(syncer);

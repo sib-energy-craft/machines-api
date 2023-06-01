@@ -52,7 +52,7 @@ public class OutputSlot extends Slot {
 
     @Override
     protected void onCrafted(@NotNull ItemStack stack) {
-        stack.onCraft(this.player.world, this.player, this.amount);
+        stack.onCraft(this.player.getWorld(), this.player, this.amount);
         if (this.player instanceof ServerPlayerEntity serverPlayer &&
                 this.inventory instanceof ExperienceCreatingMachine experienceCreatingMachine) {
             experienceCreatingMachine.dropExperienceForRecipesUsed(serverPlayer);

@@ -5,6 +5,7 @@ import com.github.sib_energy_craft.machines.block.entity.EnergyMachineInventoryT
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.AbstractCookingRecipe;
 import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeType;
@@ -65,7 +66,7 @@ public final class EnergyMachineUtils {
         if (outputSlotStack.isEmpty()) {
             return true;
         }
-        if (!outputSlotStack.isItemEqual(outputStack)) {
+        if (!ItemStack.areItemsEqual(outputSlotStack, outputStack)) {
             return false;
         }
         int outputSlotStackCount = outputSlotStack.getCount();
