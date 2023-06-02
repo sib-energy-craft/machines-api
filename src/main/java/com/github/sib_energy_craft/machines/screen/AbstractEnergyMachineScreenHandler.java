@@ -177,7 +177,7 @@ public abstract class AbstractEnergyMachineScreenHandler extends SlotsScreenHand
                 var slotType = slotMeta.getSlotType();
                 if (slotType == EnergyMachineSlotTypes.SOURCE || slotType == EnergyMachineSlotTypes.CHARGE ||
                         slotType == EnergyMachineSlotTypes.OUTPUT) {
-                    if (!insertItem(slotGroupsMeta, slotStack, SlotTypes.QUICK_ACCESS, SlotTypes.PLAYER_INVENTORY)) {
+                    if (!insertItem(slotGroupsMeta, slotStack, SlotTypes.PLAYER_INVENTORY, SlotTypes.QUICK_ACCESS)) {
                         return ItemStack.EMPTY;
                     }
                 } else {
