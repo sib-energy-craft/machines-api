@@ -172,11 +172,13 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
     @Override
     public ItemStack removeStack(int slot, int amount) {
+        markDirty();
         return this.inventory.removeStack(slot, amount);
     }
 
     @Override
     public ItemStack removeStack(int slot) {
+        markDirty();
         return this.inventory.removeStack(slot);
     }
 
@@ -186,21 +188,26 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         if (world == null) {
             return;
         }
-        var inventoryStack = this.inventory.getStack(slot);
-        var sourceInventory = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        var wasSourceEmpty = sourceInventory != null && sourceInventory.isEmpty();
-
-        var sameItem = inventoryStack.isEmpty() ||
-                !stack.isEmpty() && stack.isItemEqual(inventoryStack) && ItemStack.areNbtEqual(stack, inventoryStack);
-        this.inventory.setStack(slot, stack);
-        int maxCountPerStack = this.getMaxCountPerStack();
-        if (stack.getCount() > maxCountPerStack) {
-            stack.setCount(maxCountPerStack);
-        }
-        var slotType = inventory.getType(slot);
-        if (slotType == EnergyMachineInventoryType.SOURCE) {
-            onSourceSet(world, wasSourceEmpty, sameItem);
-            markDirty();
+        var type = inventory.getType(slot);
+        if (type == EnergyMachineInventoryType.CHARGE) {
+            var inventoryStack = inventory.getStack(slot);
+            if (inventoryStack.isEmpty()) {
+                inventory.setStack(slot, stack);
+                markDirty();
+            }
+        } else if (type == EnergyMachineInventoryType.SOURCE) {
+            var sourceInventory = inventory.getInventory(type);
+            if (sourceInventory == null) {
+                return;
+            }
+            int maxCountPerStack = this.getMaxCountPerStack();
+            if (stack.getCount() > maxCountPerStack) {
+                stack.setCount(maxCountPerStack);
+            }
+            var wasEmpty = sourceInventory.isEmpty();
+            inventory.setStack(slot, stack);
+            var isEmpty = sourceInventory.isEmpty();
+            onSourceSet(world, wasEmpty, isEmpty);
         }
     }
 
@@ -209,9 +216,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      *
      * @param world game world
      * @param wasSourceEmpty  was source slot empty
-     * @param itemTimeChanged was source item replaced
+     * @param isSourceEmpty is source item after set
      */
-    protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean itemTimeChanged) {
+    protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean isSourceEmpty) {
         markDirty();
     }
 
