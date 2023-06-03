@@ -8,8 +8,6 @@ import com.github.sib_energy_craft.screen.property.ScreenPropertyTypes;
  * @author sibmaks
  */
 public enum EnergyMachineTypedProperties implements EnergyMachineTypedProperty<Integer> {
-    COOKING_TIME,
-    COOKING_TIME_TOTAL,
     CHARGE,
     MAX_CHARGE;
 

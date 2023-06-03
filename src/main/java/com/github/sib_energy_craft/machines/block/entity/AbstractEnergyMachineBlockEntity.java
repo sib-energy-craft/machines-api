@@ -10,13 +10,10 @@ import com.github.sib_energy_craft.machines.CombinedInventory;
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
 import com.github.sib_energy_craft.machines.block.entity.property.EnergyMachinePropertyMap;
 import com.github.sib_energy_craft.machines.block.entity.property.EnergyMachineTypedProperties;
-import com.github.sib_energy_craft.machines.core.ExperienceCreatingMachine;
 import com.github.sib_energy_craft.machines.screen.AbstractEnergyMachineScreenHandler;
-import com.github.sib_energy_craft.machines.utils.ExperienceUtils;
 import com.github.sib_energy_craft.pipes.api.ItemConsumer;
 import com.github.sib_energy_craft.pipes.api.ItemSupplier;
 import com.github.sib_energy_craft.pipes.utils.PipeUtils;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -30,14 +27,12 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.*;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
+import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -52,20 +47,15 @@ import java.util.stream.IntStream;
  */
 public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
         extends BlockEntity
-        implements SidedInventory, RecipeUnlocker, RecipeInputProvider, ExperienceCreatingMachine,
-        ExtendedScreenHandlerFactory,
+        implements SidedInventory, ExtendedScreenHandlerFactory,
         EnergyConsumer,
         ItemConsumer, ItemSupplier {
-    private static final Energy ENERGY_ONE = Energy.of(1);
 
-    protected int cookTime;
-    protected int cookTimeTotal;
     protected CleanEnergyContainer energyContainer;
     protected boolean working;
 
     protected final B block;
     protected final EnergyMachinePropertyMap energyMachinePropertyMap;
-    protected final Object2IntOpenHashMap<Identifier> recipesUsed;
     protected final CombinedInventory<EnergyMachineInventoryType> inventory;
     private final EnumMap<EnergyMachineEvent, List<Runnable>> eventListeners;
 
@@ -93,7 +83,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
                                             int parallelProcess) {
         super(blockEntityType, blockPos, blockState);
         this.block = block;
-        this.recipesUsed = new Object2IntOpenHashMap<>();
 
         var typedInventoryMap = new EnumMap<EnergyMachineInventoryType, Inventory>(EnergyMachineInventoryType.class);
         typedInventoryMap.put(EnergyMachineInventoryType.SOURCE, new SimpleInventory(sourceSlots));
@@ -111,8 +100,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
         this.energyMachinePropertyMap = new EnergyMachinePropertyMap();
-        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.COOKING_TIME, () -> cookTime);
-        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.COOKING_TIME_TOTAL, () -> cookTimeTotal);
         this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.CHARGE,
                 () -> energyContainer.getCharge().intValue());
         this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.MAX_CHARGE,
@@ -124,25 +111,17 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     @Override
     public void readNbt(@NotNull NbtCompound nbt) {
         super.readNbt(nbt);
-        this.inventory.readNbt(nbt);
-        this.cookTime = nbt.getShort("CookTime");
-        this.cookTimeTotal = nbt.getShort("CookTimeTotal");
-        var nbtCompound = nbt.getCompound("RecipesUsed");
-        for (var string : nbtCompound.getKeys()) {
-            this.recipesUsed.put(new Identifier(string), nbtCompound.getInt(string));
-        }
+        var inventoryCompound = nbt.getCompound("Inventory");
+        this.inventory.readNbt(inventoryCompound);
         this.energyContainer = CleanEnergyContainer.readNbt(nbt);
     }
 
     @Override
     protected void writeNbt(@NotNull NbtCompound nbt) {
         super.writeNbt(nbt);
-        nbt.putShort("CookTime", (short) this.cookTime);
-        nbt.putShort("CookTimeTotal", (short) this.cookTimeTotal);
-        this.inventory.writeNbt(nbt);
-        var nbtCompound = new NbtCompound();
-        this.recipesUsed.forEach((identifier, count) -> nbtCompound.putInt(identifier.toString(), count));
-        nbt.put("RecipesUsed", nbtCompound);
+        var inventoryCompound = new NbtCompound();
+        this.inventory.writeNbt(inventoryCompound);
+        nbt.put("Inventory", inventoryCompound);
         this.energyContainer.writeNbt(nbt);
     }
 
@@ -220,14 +199,20 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         }
         var slotType = inventory.getType(slot);
         if (slotType == EnergyMachineInventoryType.SOURCE) {
-            if(wasSourceEmpty || !sameItem) {
-                this.cookTimeTotal = getCookTimeTotal(world);
-            }
-            if(!sameItem) {
-                this.cookTime = 0;
-            }
+            onSourceSet(world, wasSourceEmpty, sameItem);
             markDirty();
         }
+    }
+
+    /**
+     * Called each time when source slot item type changed
+     *
+     * @param world game world
+     * @param wasSourceEmpty  was source slot empty
+     * @param itemTimeChanged was source item replaced
+     */
+    protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean itemTimeChanged) {
+        markDirty();
     }
 
     @Override
@@ -262,36 +247,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     }
 
     @Override
-    public void setLastRecipe(@Nullable Recipe<?> recipe) {
-        if (recipe != null) {
-            var identifier = recipe.getId();
-            this.recipesUsed.addTo(identifier, 1);
-        }
-    }
-
-    @Override
-    @Nullable
-    public Recipe<?> getLastRecipe() {
-        return null;
-    }
-
-    @Override
-    public void unlockLastRecipe(@NotNull PlayerEntity player) {
-    }
-
-    @Override
-    public void provideRecipeInputs(@NotNull RecipeMatcher finder) {
-        var sources = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sources == null) {
-            return;
-        }
-        for (int i = 0; i < sources.size(); i++) {
-            var itemStack = sources.getStack(i);
-            finder.addInput(itemStack);
-        }
-    }
-
-    @Override
     public boolean isConsumeFrom(@NotNull Direction direction) {
         return true;
     }
@@ -319,35 +274,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      */
     public void onPlaced(int charge) {
         this.energyContainer.add(charge);
-    }
-
-    @Override
-    public void dropExperienceForRecipesUsed(@NotNull ServerPlayerEntity player) {
-        var list = this.getRecipesUsedAndDropExperience(player.getWorld(), player.getPos());
-        player.unlockRecipes(list);
-        this.recipesUsed.clear();
-    }
-
-    /**
-     * Method can be used for drop experience for last used recipes.<br/>
-     * Last used recipes returned
-     *
-     * @param world game world
-     * @param pos   position to drop
-     * @return list of last used recipes
-     */
-    public List<Recipe<?>> getRecipesUsedAndDropExperience(@NotNull ServerWorld world,
-                                                           @NotNull Vec3d pos) {
-        var recipes = new ArrayList<Recipe<?>>();
-        var recipeManager = world.getRecipeManager();
-        for (var entry : this.recipesUsed.object2IntEntrySet()) {
-            var key = entry.getKey();
-            recipeManager.get(key).ifPresent(recipe -> {
-                recipes.add(recipe);
-                dropExperience(world, pos, entry.getIntValue(), recipe);
-            });
-        }
-        return recipes;
     }
 
     /**
@@ -389,105 +315,11 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     }
 
     /**
-     * Drop experience on recipe use
-     *
-     * @param world game world
-     * @param pos position
-     * @param id recipe entry id
-     * @param recipe used recipe
-     */
-    protected void dropExperience(@NotNull ServerWorld world,
-                                  @NotNull Vec3d pos,
-                                  int id,
-                                  @NotNull Recipe<?> recipe) {
-        if (recipe instanceof AbstractCookingRecipe cookingRecipe) {
-            ExperienceUtils.drop(world, pos, id, cookingRecipe.getExperience());
-        }
-    }
-
-    /**
      * Method return amount of energy that used every cooking tick
      * @return amount of energy
      */
     public @NotNull Energy getEnergyUsagePerTick() {
-        return ENERGY_ONE;
-    }
-
-    /**
-     * Get current recipe by game world and process index
-     *
-     * @param world game world
-     * @param process process index
-     *
-     * @return recipe
-     * @since 0.0.16
-     */
-    abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world, int process);
-
-    /**
-     * Get recipe using all source inventory
-     *
-     * @return recipe
-     * @since 0.0.16
-     */
-    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
-                                                                               @NotNull World world) {
-        var sourceInventory = (C) inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sourceInventory == null) {
-            return null;
-        }
-        var recipeManager = world.getRecipeManager();
-        return recipeManager.getFirstMatch(recipeType, sourceInventory, world)
-                .orElse(null);
-    }
-
-    /**
-     * Get recipe using only passed slot
-     *
-     * @return recipe
-     * @since 0.0.20
-     */
-    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
-                                                                               @NotNull World world,
-                                                                               int slot) {
-        var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sourceInventory == null) {
-            return null;
-        }
-        var sourceStack = sourceInventory.getStack(slot);
-        var craftingInventory = (C) new SimpleInventory(sourceStack);
-        var recipeManager = world.getRecipeManager();
-        return recipeManager.getFirstMatch(recipeType, craftingInventory, world)
-                .orElse(null);
-    }
-
-    /**
-     * Method for calculation decrement of source items on cooking
-     *
-     * @param recipe using recipe
-     * @return amount of source to decrement
-     */
-    protected int calculateDecrement(@NotNull Recipe<?> recipe) {
-        return 1;
-    }
-
-    /**
-     * Method for calculation of total cooking time.<br/>
-     * Calculation can be based of recipe, some modifiers or even time of day.
-     *
-     * @param world game world
-     * @return total cook time
-     */
-    abstract public int getCookTimeTotal(@NotNull World world);
-
-    /**
-     * Method return cook time increment
-     *
-     * @param world game world
-     * @return cook time increment
-     */
-    public int getCookTimeInc(@NotNull World world) {
-        return 1;
+        return Energy.ONE;
     }
 
     /**
@@ -518,14 +350,80 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     }
 
     /**
+     * Can machine processing specific process
+     *
+     * @param process process index
+     * @param world game world
+     * @param pos machine position
+     * @param state machine state
+     * @param processContext process context
+     *
+     * @return true - can process, false - otherwise
+     * @since 0.0.36
+     */
+    abstract protected boolean canProcess(int process,
+                                          @NotNull World world,
+                                          @NotNull BlockPos pos,
+                                          @NotNull BlockState state,
+                                          @NotNull Map<String, Object> processContext);
+
+    /**
+     * Tick machine process logic.<br/>
+     * It can affect as common machine state (not process related) as process related.<br/>
+     * But process id will be passed in both cases.
+     *
+     * @param process process index
+     * @param world game world
+     * @param pos machine position
+     * @param state machine state
+     * @param processContext process context
+     *
+     * @return true - process cycle complete, false - otherwise
+     * @since 0.0.36
+     */
+    abstract protected boolean tickProcess(int process,
+                                           @NotNull World world,
+                                           @NotNull BlockPos pos,
+                                           @NotNull BlockState state,
+                                           @NotNull Map<String, Object> processContext);
+
+    /**
+     * Process machine logic
+     *
+     * @param process process index
+     * @param world game world
+     * @param pos machine position
+     * @param state machine state
+     * @param processContext process context
+     * @since 0.0.36
+     *
+     */
+    abstract protected void onProcessFinished(int process,
+                                              @NotNull World world,
+                                              @NotNull BlockPos pos,
+                                              @NotNull BlockState state,
+                                              @NotNull Map<String, Object> processContext);
+
+    /**
+     * Method return mark is machine consume one energy per each tick or per each process
+     *
+     * @return true - machine consume energy on each process, false - machine consume energy on each cycle
+     * @since 0.0.36
+     */
+    protected boolean isEachProcessUseEnergy() {
+        return false;
+    }
+
+    /**
      * Default implementation of machine cooking tick
      *
      * @param world game world
      * @param pos block position
      * @param state block state
      * @param blockEntity block entity
+     * @since 0.0.36
      */
-    public static void simpleCookingTick(
+    public static void simpleProcessingTick(
             @NotNull World world,
             @NotNull BlockPos pos,
             @NotNull BlockState state,
@@ -548,59 +446,101 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
             return;
         }
-        var maxCountPerStack = blockEntity.getMaxCountPerStack();
-        boolean energyUsed = false;
-        boolean canCook = false;
-        boolean cooked = false;
-        for (int process = 0; process < blockEntity.parallelProcess; process++) {
-            var recipe = blockEntity.getRecipe(world, process);
-            if (recipe == null) {
-                continue;
-            }
-            if (!blockEntity.canAcceptRecipeOutput(process, world, recipe, maxCountPerStack)) {
-                continue;
-            }
-            canCook = true;
-            if(!energyUsed) {
-                if(blockEntity.energyContainer.subtract(requiredEnergy)) {
-                    energyUsed = true;
-                    int cookTimeInc = blockEntity.getCookTimeInc(world);
-                    blockEntity.cookTime += cookTimeInc;
-                    blockEntity.working = true;
-                    if (blockEntity.cookTime >= blockEntity.cookTimeTotal) {
-                        blockEntity.cookTime = 0;
-                        blockEntity.cookTimeTotal = blockEntity.getCookTimeTotal(world);
-                        cooked = true;
-                    }
-                    changed = true;
-                    blockEntity.dispatch(EnergyMachineEvent.ENERGY_USED);
-                } else {
-                    blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
-                    break;
-                }
-            }
-            if (cooked) {
-                int decrement = blockEntity.calculateDecrement(recipe);
-                if (blockEntity.craftRecipe(process, world, recipe, decrement, maxCountPerStack)) {
-                    blockEntity.setLastRecipe(recipe);
-                }
-                blockEntity.dispatch(EnergyMachineEvent.COOKED);
-            }
-        }
-        if(!canCook) {
-            blockEntity.cookTime = 0;
-            blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_COOK);
+        boolean eachProcessUseEnergy = blockEntity.isEachProcessUseEnergy();
+        if(eachProcessUseEnergy) {
+            changed = processEachProcessUseEnergy(world, pos, state, blockEntity);
+        } else {
+            changed = processUseEnergyOnce(world, pos, state, blockEntity);
         }
 
         boolean energyChanged = hasEnergy != blockEntity.energyContainer.hasAtLeast(requiredEnergy);
-        blockEntity.updateState(working, state, world, pos, energyChanged|| changed);
+        blockEntity.updateState(working, state, world, pos, energyChanged || changed);
     }
 
+    private static boolean processEachProcessUseEnergy(
+            @NotNull World world,
+            @NotNull BlockPos pos,
+            @NotNull BlockState state,
+            @NotNull AbstractEnergyMachineBlockEntity<?> blockEntity) {
+        var requiredEnergy = blockEntity.getEnergyUsagePerTick();
+        boolean canProcess = false;
+        boolean anyProcessFinished = false;
+        for (int process = 0; process < blockEntity.parallelProcess; process++) {
+            var context = new HashMap<String, Object>();
+            canProcess = blockEntity.canProcess(process, world, pos, state, context);
+            if (!canProcess) {
+                continue;
+            }
+            if (!blockEntity.energyContainer.subtract(requiredEnergy)) {
+                blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
+                break;
+            }
+            var processFinished = blockEntity.tickProcess(process, world, pos, state, context);
+            anyProcessFinished |= processFinished;
+            blockEntity.dispatch(EnergyMachineEvent.ENERGY_USED);
+            if (processFinished) {
+                blockEntity.onProcessFinished(process, world, pos, state, context);
+                blockEntity.dispatch(EnergyMachineEvent.PROCESSED);
+            }
+        }
+        if (!canProcess) {
+            blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_PROCESS);
+        }
+        return canProcess | anyProcessFinished;
+    }
+
+    private static boolean processUseEnergyOnce(
+            @NotNull World world,
+            @NotNull BlockPos pos,
+            @NotNull BlockState state,
+            @NotNull AbstractEnergyMachineBlockEntity<?> blockEntity) {
+        var requiredEnergy = blockEntity.getEnergyUsagePerTick();
+        boolean energyUsed = false;
+        boolean canMachineProcess = false;
+        boolean processFinished = false;
+        for (int process = 0; process < blockEntity.parallelProcess; process++) {
+            var context = new HashMap<String, Object>();
+            var canProcess = blockEntity.canProcess(process, world, pos, state, context);
+            if (!canProcess) {
+                continue;
+            }
+            canMachineProcess = true;
+            if (!energyUsed) {
+                if (!blockEntity.energyContainer.subtract(requiredEnergy)) {
+                    blockEntity.dispatch(EnergyMachineEvent.ENERGY_NOT_ENOUGH);
+                    break;
+                }
+                energyUsed = true;
+                blockEntity.dispatch(EnergyMachineEvent.ENERGY_USED);
+                processFinished = blockEntity.tickProcess(process, world, pos, state, context);
+                if (processFinished) {
+                    blockEntity.dispatch(EnergyMachineEvent.PROCESSED);
+                }
+            }
+            if (processFinished) {
+                blockEntity.onProcessFinished(process, world, pos, state, context);
+            }
+        }
+        if (!canMachineProcess) {
+            blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_PROCESS);
+        }
+        return energyUsed | canMachineProcess | processFinished;
+    }
+
+    /**
+     * Update block state
+     *
+     * @param wasWork was machine in working state before tick
+     * @param state machine block state
+     * @param world game world
+     * @param pos machine block position
+     * @param markDirty need mark machine state as dirty
+     */
     protected void updateState(boolean wasWork,
-                                    @NotNull BlockState state,
-                                    @NotNull World world,
-                                    @NotNull BlockPos pos,
-                                    boolean markDirty) {
+                               @NotNull BlockState state,
+                               @NotNull World world,
+                               @NotNull BlockPos pos,
+                               boolean markDirty) {
         if (wasWork != working) {
             state = state.with(AbstractEnergyMachineBlock.WORKING, working);
             world.setBlockState(pos, state, Block.NOTIFY_ALL);
@@ -610,36 +550,6 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             markDirty(world, pos, state);
         }
     }
-
-    /**
-     * Get machine accept recipe output produced by specific process
-     *
-     * @param process machine process index
-     * @param world game world
-     * @param recipe crafting recipe
-     * @param count max amount of output
-     * @return true - machine can accept recipe, false - otherwise
-     */
-    abstract protected boolean canAcceptRecipeOutput(int process,
-                                                     @NotNull World world,
-                                                     @NotNull Recipe<Inventory> recipe,
-                                                     int count);
-
-    /**
-     * Craft recipe in specific process
-     *
-     * @param process machine process index
-     * @param world game world
-     * @param recipe crafting recipe
-     * @param decrement amount of source stack to decrement
-     * @param maxCount max amount of output
-     * @return true - recipe crafted, false - otherwise
-     */
-    abstract public boolean craftRecipe(int process,
-                                        @NotNull World world,
-                                        @NotNull Recipe<Inventory> recipe,
-                                        int decrement,
-                                        int maxCount);
 
     @Override
     public boolean canConsume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
@@ -745,5 +655,21 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     @Override
     public void writeScreenOpeningData(@NotNull ServerPlayerEntity player,
                                        @NotNull PacketByteBuf buf) {
+    }
+
+    /** Called when block state replaced
+     *
+     * @param state old state
+     * @param serverWorld server world
+     * @param pos machine position
+     * @param newState new state
+     * @param moved moved
+     */
+    public void onStateReplaced(@NotNull BlockState state,
+                                @NotNull ServerWorld serverWorld,
+                                @NotNull BlockPos pos,
+                                @NotNull BlockState newState,
+                                boolean moved) {
+        ItemScatterer.spawn(world, pos, this);
     }
 }

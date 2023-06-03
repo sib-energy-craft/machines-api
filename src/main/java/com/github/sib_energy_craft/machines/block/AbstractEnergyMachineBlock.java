@@ -19,10 +19,8 @@ import net.minecraft.state.StateManager;
 import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -89,8 +87,7 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
         var blockEntity = world.getBlockEntity(pos);
         if (blockEntity instanceof AbstractEnergyMachineBlockEntity<?> machineBlockEntity) {
             if (world instanceof ServerWorld serverWorld) {
-                ItemScatterer.spawn(world, pos, machineBlockEntity);
-                machineBlockEntity.getRecipesUsedAndDropExperience(serverWorld, Vec3d.ofCenter(pos));
+                machineBlockEntity.onStateReplaced(state, serverWorld, pos, newState, moved);
             }
             world.updateComparators(pos, this);
         }

@@ -7,6 +7,6 @@ package com.github.sib_energy_craft.machines.block.entity;
 public enum EnergyMachineEvent {
     ENERGY_USED,
     ENERGY_NOT_ENOUGH,
-    CAN_NOT_COOK,
-    COOKED
+    CAN_NOT_PROCESS,
+    PROCESSED
 }
