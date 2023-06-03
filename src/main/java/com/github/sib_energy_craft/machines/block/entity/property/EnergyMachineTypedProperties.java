@@ -11,6 +11,8 @@ public enum EnergyMachineTypedProperties implements EnergyMachineTypedProperty<I
     CHARGE,
     MAX_CHARGE;
 
+    public static final int PROPERTIES_SIZE = values().length;
+
     @Override
     public int getIndex() {
         return ordinal();

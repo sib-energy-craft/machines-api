@@ -14,6 +14,7 @@ public enum CookingEnergyMachineTypedProperties implements EnergyMachineTypedPro
     COOKING_TIME_TOTAL;
 
     private static final int OFFSET = EnergyMachineTypedProperties.values().length;
+    public static final int PROPERTIES_SIZE = OFFSET + values().length;
 
     @Override
     public int getIndex() {
