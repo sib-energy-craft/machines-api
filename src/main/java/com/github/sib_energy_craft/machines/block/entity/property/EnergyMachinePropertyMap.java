@@ -28,7 +28,7 @@ public class EnergyMachinePropertyMap {
      * @param <T> property Java type
      */
     public synchronized <T> void add(@NotNull EnergyMachineTypedProperty<T> property,
-                       @NotNull Supplier<T> supplier) {
+                                     @NotNull Supplier<T> supplier) {
         var typedProperty = new TypedScreenProperty<>(property.getIndex(), property.getPropertyType(), supplier);
         properties.add(typedProperty);
     }
@@ -41,7 +41,7 @@ public class EnergyMachinePropertyMap {
      * @return property syncer instance
      */
     public @NotNull PropertyUpdateSyncer createSyncer(int syncId,
-                                             @NotNull ServerPlayerEntity serverPlayerEntity) {
+                                                      @NotNull ServerPlayerEntity serverPlayerEntity) {
         return new PropertyUpdateSyncer(syncId, serverPlayerEntity, properties);
     }
 }

@@ -1,4 +1,4 @@
-package com.github.sib_energy_craft.machines.block.entity;
+package com.github.sib_energy_craft.machines.cooking.block.entity;
 
 import com.github.sib_energy_craft.machines.block.AbstractEnergyMachineBlock;
 import com.github.sib_energy_craft.machines.utils.EnergyMachineUtils;
@@ -11,11 +11,11 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * @since 0.0.28
  * @author sibmaks
+ * @since 0.0.28
  */
 public abstract class OneToOneEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
-        extends AbstractEnergyMachineBlockEntity<B> {
+        extends CookingEnergyMachineBlockEntity<B> {
 
 
     public OneToOneEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,

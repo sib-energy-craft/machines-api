@@ -9,8 +9,6 @@ import lombok.Getter;
  */
 @Getter
 public class EnergyMachineState {
-    private int cookingTime;
-    private int cookingTimeTotal;
     private int charge;
     private int maxCharge;
 
@@ -22,13 +20,9 @@ public class EnergyMachineState {
      * @param <V> type of property
      */
     public <V> void changeProperty(int index, V value) {
-        if(index == EnergyMachineTypedProperties.COOKING_TIME.ordinal()) {
-            cookingTime = (int) value;
-        } else if(index == EnergyMachineTypedProperties.COOKING_TIME_TOTAL.ordinal()) {
-            cookingTimeTotal = (int) value;
-        } else if(index == EnergyMachineTypedProperties.CHARGE.ordinal()) {
+        if(index == EnergyMachineTypedProperties.CHARGE.getIndex()) {
             charge = (int) value;
-        } else if(index == EnergyMachineTypedProperties.MAX_CHARGE.ordinal()) {
+        } else if(index == EnergyMachineTypedProperties.MAX_CHARGE.getIndex()) {
             maxCharge = (int) value;
         }
     }

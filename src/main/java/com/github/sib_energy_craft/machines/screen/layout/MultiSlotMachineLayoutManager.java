@@ -1,6 +1,6 @@
 package com.github.sib_energy_craft.machines.screen.layout;
 
-import com.github.sib_energy_craft.machines.screen.EnergyMachineSlotTypes;
+import com.github.sib_energy_craft.machines.block.entity.EnergyMachineInventoryType;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotType;
 import com.github.sib_energy_craft.sec_utils.screen.slot.SlotTypes;
 import org.jetbrains.annotations.NotNull;
@@ -59,13 +59,13 @@ public class MultiSlotMachineLayoutManager implements SlotLayoutManager {
             int j = typeIndex - i * 9;
             return new Vector2i(playerInventoryX + j * 18, playerInventoryY + i * 18);
         }
-        if(slotType == EnergyMachineSlotTypes.SOURCE && typeIndex >= 0 && typeIndex < sourceSlots.length) {
+        if(slotType == EnergyMachineInventoryType.SOURCE && typeIndex >= 0 && typeIndex < sourceSlots.length) {
             return sourceSlots[typeIndex];
         }
-        if(slotType == EnergyMachineSlotTypes.CHARGE) {
+        if(slotType == EnergyMachineInventoryType.CHARGE) {
             return chargeSlot;
         }
-        if(slotType == EnergyMachineSlotTypes.OUTPUT && typeIndex >= 0 && typeIndex < outputSlots.length) {
+        if(slotType == EnergyMachineInventoryType.OUTPUT && typeIndex >= 0 && typeIndex < outputSlots.length) {
             return outputSlots[typeIndex];
         }
         return new Vector2i(0, 0);
