@@ -82,13 +82,12 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     }
 
     @Override
-    protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean itemTimeChanged) {
-        super.onSourceSet(world, wasSourceEmpty, itemTimeChanged);
-        if(wasSourceEmpty || !itemTimeChanged) {
-            this.cookTimeTotal = getCookTimeTotal(world);
-        }
-        if(!itemTimeChanged) {
+    protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean isSourceEmpty) {
+        super.onSourceSet(world, wasSourceEmpty, isSourceEmpty);
+        if(isSourceEmpty) {
             this.cookTime = 0;
+        } else if(wasSourceEmpty) {
+            this.cookTimeTotal = getCookTimeTotal(world);
         }
     }
 
