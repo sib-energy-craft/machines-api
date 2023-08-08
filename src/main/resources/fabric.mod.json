@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sec-energy-machines-api",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "name": "SibEnergyCraft - Energy machines API",
   "authors": [
     "sibmaks"
@@ -12,6 +12,6 @@
   "depends": {
     "fabricloader": ">=0.14.21",
     "fabric": "*",
-    "minecraft": "1.20"
+    "minecraft": "1.20.1"
   }
 }
