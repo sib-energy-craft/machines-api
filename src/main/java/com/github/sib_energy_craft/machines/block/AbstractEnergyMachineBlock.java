@@ -26,20 +26,22 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * @since 0.0.1
  * @author sibmaks
+ * @since 0.0.1
  */
+@Getter
 public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
+    /**
+     * Abstract energy machine working state
+     */
     public static final BooleanProperty WORKING = BooleanProperty.of("working");
 
-    @Getter
     private final EnergyLevel energyLevel;
-    @Getter
     private final int maxCharge;
 
-    public AbstractEnergyMachineBlock(@NotNull Settings settings,
-                                      @NotNull EnergyLevel energyLevel,
-                                      int maxCharge) {
+    protected AbstractEnergyMachineBlock(@NotNull Settings settings,
+                                         @NotNull EnergyLevel energyLevel,
+                                         int maxCharge) {
         super(settings);
         this.energyLevel = energyLevel;
         this.maxCharge = maxCharge;
@@ -116,6 +118,13 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
         builder.add(WORKING);
     }
 
+    /**
+     * Method called when player interacts with block and needs to open machine screen
+     *
+     * @param world  game world
+     * @param pos    block position
+     * @param player player entity
+     */
     protected abstract void openScreen(@NotNull World world,
                                        @NotNull BlockPos pos,
                                        @NotNull PlayerEntity player);
@@ -133,7 +142,7 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
         if (!(world instanceof ServerWorld serverWorld)) {
             return;
         }
-        getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach((stackx) -> {
+        getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach(stackx -> {
             dropStack(world, pos, stackx);
             if (!(blockEntity instanceof AbstractEnergyMachineBlockEntity<?> abstractEnergyMachineBlockEntity)) {
                 return;

@@ -6,6 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.recipe.Recipe;
+import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
@@ -44,9 +45,10 @@ public abstract class OneToOneEnergyMachineBlockEntity<B extends AbstractEnergyM
     @Override
     public boolean craftRecipe(int process,
                                @NotNull World world,
-                               @NotNull Recipe<Inventory> recipe,
+                               @NotNull RecipeEntry<? extends Recipe<Inventory>> recipeEntry,
                                int decrement,
                                int maxCount) {
+        var recipe = recipeEntry.value();
         return EnergyMachineUtils.craftRecipe(process, inventory, world, recipe, decrement, maxCount);
     }
 }

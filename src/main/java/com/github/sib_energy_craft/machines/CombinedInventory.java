@@ -14,6 +14,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -27,11 +28,11 @@ public class CombinedInventory<T extends Enum<T>> implements Inventory {
     private final Map<Integer, Inventory> stacks;
     private final Map<Inventory, Integer> offsets;
 
-    public CombinedInventory(@NotNull EnumMap<T, Inventory> inventories) {
+    public CombinedInventory(@NotNull Map<T, Inventory> inventories) {
         this.inventories = List.copyOf(inventories.values());
         this.typedInventories = new EnumMap<>(inventories);
         this.inventoryTypes = inventories.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+                .collect(Collectors.toMap(Entry::getValue, Entry::getKey));
         this.stacks = new HashMap<>();
         this.offsets = new HashMap<>();
         int stack = 0;

@@ -5,40 +5,37 @@ import net.minecraft.recipe.AbstractCookingRecipe;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.recipe.book.CookingRecipeCategory;
-import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * @since 0.0.1
  * @author sibmaks
+ * @since 0.0.1
  */
 public abstract class OpenAbstractCookingRecipe extends AbstractCookingRecipe {
 
 
-    public OpenAbstractCookingRecipe(@NotNull RecipeType<?> type, Identifier id,
-                                     @NotNull String group,
-                                     @NotNull CookingRecipeCategory category,
-                                     @NotNull Ingredient input,
-                                     @NotNull ItemStack output,
-                                     float experience,
-                                     int cookTime) {
-        super(type, id, group, category, input, output, experience, cookTime);
+    protected OpenAbstractCookingRecipe(@NotNull RecipeType<?> type,
+                                        @NotNull String group,
+                                        @NotNull CookingRecipeCategory category,
+                                        @NotNull Ingredient input,
+                                        @NotNull ItemStack output,
+                                        float experience,
+                                        int cookTime) {
+        super(type, group, category, input, output, experience, cookTime);
     }
 
     /**
-     * Getter for recipe input
-     * @return input
+     * @return get recipe ingredient
      */
     public Ingredient getInput() {
-        return input;
+        return ingredient;
     }
 
 
     /**
-     * Getter for recipe output
-     * @return output
+     * @return get recipe output
      */
     public ItemStack getOutput() {
-        return output;
+        return result;
     }
 }

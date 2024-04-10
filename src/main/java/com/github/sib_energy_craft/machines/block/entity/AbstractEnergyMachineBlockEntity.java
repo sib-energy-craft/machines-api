@@ -42,8 +42,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * @since 0.0.1
  * @author sibmaks
+ * @since 0.0.1
  */
 public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyMachineBlock>
         extends BlockEntity
@@ -67,20 +67,20 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     protected final int[] bottomSlots;
 
 
-    public AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                            @NotNull BlockPos blockPos,
-                                            @NotNull BlockState blockState,
-                                            @NotNull B block) {
+    protected AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                               @NotNull BlockPos blockPos,
+                                               @NotNull BlockState blockState,
+                                               @NotNull B block) {
         this(blockEntityType, blockPos, blockState, block, 1, 1, 1);
     }
 
-    public AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                            @NotNull BlockPos blockPos,
-                                            @NotNull BlockState blockState,
-                                            @NotNull B block,
-                                            int sourceSlots,
-                                            int outputSlots,
-                                            int parallelProcess) {
+    protected AbstractEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                               @NotNull BlockPos blockPos,
+                                               @NotNull BlockState blockState,
+                                               @NotNull B block,
+                                               int sourceSlots,
+                                               int outputSlots,
+                                               int parallelProcess) {
         super(blockEntityType, blockPos, blockState);
         this.block = block;
 
@@ -100,10 +100,14 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
         this.energyContainer = new CleanEnergyContainer(Energy.ZERO, block.getMaxCharge());
         this.energyMachinePropertyMap = new EnergyMachinePropertyMap();
-        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.CHARGE,
-                () -> energyContainer.getCharge().intValue());
-        this.energyMachinePropertyMap.add(EnergyMachineTypedProperties.MAX_CHARGE,
-                () -> energyContainer.getMaxCharge().intValue());
+        this.energyMachinePropertyMap.add(
+                EnergyMachineTypedProperties.CHARGE,
+                () -> energyContainer.getCharge().asInt()
+        );
+        this.energyMachinePropertyMap.add(
+                EnergyMachineTypedProperties.MAX_CHARGE,
+                () -> energyContainer.getMaxCharge().asInt()
+        );
 
         this.eventListeners = new EnumMap<>(EnergyMachineEvent.class);
     }
@@ -214,9 +218,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     /**
      * Called each time when source slot item type changed
      *
-     * @param world game world
-     * @param wasSourceEmpty  was source slot empty
-     * @param isSourceEmpty is source item after set
+     * @param world          game world
+     * @param wasSourceEmpty was source slot empty
+     * @param isSourceEmpty  is source item after set
      */
     protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean isSourceEmpty) {
         markDirty();
@@ -238,9 +242,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         if (slotType == EnergyMachineInventoryType.OUTPUT) {
             return false;
         }
-        if(slotType == EnergyMachineInventoryType.CHARGE) {
+        if (slotType == EnergyMachineInventoryType.CHARGE) {
             var item = stack.getItem();
-            if(item instanceof ChargeableItem chargeableItem) {
+            if (item instanceof ChargeableItem chargeableItem) {
                 return chargeableItem.hasEnergy(stack);
             }
             return false;
@@ -261,13 +265,12 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     @Override
     public void receiveOffer(@NotNull EnergyOffer energyOffer) {
         final var energyLevel = block.getEnergyLevel();
-        if (energyOffer.getEnergyAmount().compareTo(energyLevel.toBig) > 0) {
-            if (energyOffer.acceptOffer()) {
-                if (world instanceof ServerWorld serverWorld) {
-                    serverWorld.breakBlock(pos, false);
-                    return;
-                }
-            }
+        if (energyOffer.getEnergyAmount().compareTo(energyLevel.to) > 0 &&
+                energyOffer.acceptOffer() &&
+                world instanceof ServerWorld serverWorld) {
+            serverWorld.breakBlock(pos, false);
+            return;
+
         }
         energyContainer.receiveOffer(energyOffer);
         markDirty();
@@ -279,18 +282,18 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      *
      * @param charge item charge
      */
-    public void onPlaced(int charge) {
+    public void onPlaced(Energy charge) {
         this.energyContainer.add(charge);
     }
 
     /**
      * Add event listeners
      *
-     * @param event event type
+     * @param event    event type
      * @param listener event listener
      */
     public synchronized void addListener(@NotNull EnergyMachineEvent event,
-                            @NotNull Runnable listener) {
+                                         @NotNull Runnable listener) {
         var listeners = this.eventListeners.computeIfAbsent(event, it -> new ArrayList<>());
         listeners.add(listener);
     }
@@ -298,11 +301,11 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     /**
      * Remove event listeners
      *
-     * @param event event type
+     * @param event    event type
      * @param listener event listener
      */
     public synchronized void removeListener(@NotNull EnergyMachineEvent event,
-                               @NotNull Runnable listener) {
+                                            @NotNull Runnable listener) {
         var listeners = this.eventListeners.computeIfAbsent(event, it -> new ArrayList<>());
         listeners.remove(listener);
     }
@@ -314,7 +317,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      */
     protected synchronized void dispatch(@NotNull EnergyMachineEvent event) {
         var listeners = this.eventListeners.get(event);
-        if(listeners != null) {
+        if (listeners != null) {
             for (var listener : listeners) {
                 listener.run();
             }
@@ -323,6 +326,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
     /**
      * Method return amount of energy that used every cooking tick
+     *
      * @return amount of energy
      */
     public @NotNull Energy getEnergyUsagePerTick() {
@@ -340,15 +344,11 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         if (chargeStack.isEmpty() || (!(chargeItem instanceof ChargeableItem chargeableItem))) {
             return false;
         }
-        int charge = chargeableItem.getCharge(chargeStack);
-        if (charge > 0) {
-            int transferred = Math.min(
-                    block.getEnergyLevel().to,
-                    Math.min(
-                            charge,
-                            energyContainer.getFreeSpace().intValue()
-                    )
-            );
+        var charge = chargeableItem.getCharge(chargeStack);
+        if (charge.compareTo(Energy.ZERO) > 0) {
+            var transferred = block.getEnergyLevel().to
+                    .min(charge)
+                    .min(energyContainer.getFreeSpace());
             chargeableItem.discharge(chargeStack, transferred);
             energyContainer.add(transferred);
             return true;
@@ -359,16 +359,15 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     /**
      * Can machine processing specific process
      *
-     * @param process process index
-     * @param world game world
-     * @param pos machine position
-     * @param state machine state
+     * @param process        process index
+     * @param world          game world
+     * @param pos            machine position
+     * @param state          machine state
      * @param processContext process context
-     *
      * @return true - can process, false - otherwise
      * @since 0.0.36
      */
-    abstract protected boolean canProcess(int process,
+    protected abstract boolean canProcess(int process,
                                           @NotNull World world,
                                           @NotNull BlockPos pos,
                                           @NotNull BlockState state,
@@ -379,16 +378,15 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      * It can affect as common machine state (not process related) as process related.<br/>
      * But process id will be passed in both cases.
      *
-     * @param process process index
-     * @param world game world
-     * @param pos machine position
-     * @param state machine state
+     * @param process        process index
+     * @param world          game world
+     * @param pos            machine position
+     * @param state          machine state
      * @param processContext process context
-     *
      * @return true - process cycle complete, false - otherwise
      * @since 0.0.36
      */
-    abstract protected boolean tickProcess(int process,
+    protected abstract boolean tickProcess(int process,
                                            @NotNull World world,
                                            @NotNull BlockPos pos,
                                            @NotNull BlockState state,
@@ -397,15 +395,14 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     /**
      * Process machine logic
      *
-     * @param process process index
-     * @param world game world
-     * @param pos machine position
-     * @param state machine state
+     * @param process        process index
+     * @param world          game world
+     * @param pos            machine position
+     * @param state          machine state
      * @param processContext process context
      * @since 0.0.36
-     *
      */
-    abstract protected void onProcessFinished(int process,
+    protected abstract void onProcessFinished(int process,
                                               @NotNull World world,
                                               @NotNull BlockPos pos,
                                               @NotNull BlockState state,
@@ -424,9 +421,9 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     /**
      * Default implementation of machine cooking tick
      *
-     * @param world game world
-     * @param pos block position
-     * @param state block state
+     * @param world       game world
+     * @param pos         block position
+     * @param state       block state
      * @param blockEntity block entity
      * @since 0.0.36
      */
@@ -444,7 +441,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         var working = blockEntity.working;
         blockEntity.working = false;
 
-        if(blockEntity.charge()) {
+        if (blockEntity.charge()) {
             changed = true;
         }
 
@@ -454,7 +451,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             return;
         }
         boolean eachProcessUseEnergy = blockEntity.isEachProcessUseEnergy();
-        if(eachProcessUseEnergy) {
+        if (eachProcessUseEnergy) {
             changed = processEachProcessUseEnergy(world, pos, state, blockEntity);
         } else {
             changed = processUseEnergyOnce(world, pos, state, blockEntity);
@@ -493,7 +490,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         if (!canProcess) {
             blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_PROCESS);
         }
-        return canProcess | anyProcessFinished;
+        return canProcess || anyProcessFinished;
     }
 
     private static boolean processUseEnergyOnce(
@@ -531,16 +528,16 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
         if (!canMachineProcess) {
             blockEntity.dispatch(EnergyMachineEvent.CAN_NOT_PROCESS);
         }
-        return energyUsed | canMachineProcess | processFinished;
+        return energyUsed || canMachineProcess || processFinished;
     }
 
     /**
      * Update block state
      *
-     * @param wasWork was machine in working state before tick
-     * @param state machine block state
-     * @param world game world
-     * @param pos machine block position
+     * @param wasWork   was machine in working state before tick
+     * @param state     machine block state
+     * @param world     game world
+     * @param pos       machine block position
      * @param markDirty need mark machine state as dirty
      */
     protected void updateState(boolean wasWork,
@@ -560,17 +557,17 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
     @Override
     public boolean canConsume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
-        if(CoreTags.isChargeable(itemStack)) {
+        if (CoreTags.isChargeable(itemStack)) {
             var chargeStack = inventory.getStack(EnergyMachineInventoryType.CHARGE, 0);
             return chargeStack.isEmpty() || PipeUtils.canMergeItems(chargeStack, itemStack);
         }
         var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sourceInventory == null) {
+        if (sourceInventory == null) {
             return false;
         }
         for (int slot = 0; slot < sourceInventory.size(); slot++) {
             var inputStack = sourceInventory.getStack(slot);
-            if(inputStack.isEmpty() || PipeUtils.canMergeItems(inputStack, itemStack)) {
+            if (inputStack.isEmpty() || PipeUtils.canMergeItems(inputStack, itemStack)) {
                 return true;
             }
         }
@@ -579,7 +576,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
 
     @Override
     public @NotNull ItemStack consume(@NotNull ItemStack itemStack, @NotNull Direction direction) {
-        if(!canConsume(itemStack, direction)) {
+        if (!canConsume(itemStack, direction)) {
             return itemStack;
         }
         markDirty();
@@ -587,7 +584,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
             return inventory.addStack(EnergyMachineInventoryType.SOURCE, itemStack);
         }
         var chargeStack = inventory.getStack(EnergyMachineInventoryType.CHARGE, 0);
-        if(chargeStack.isEmpty()) {
+        if (chargeStack.isEmpty()) {
             inventory.setStack(EnergyMachineInventoryType.CHARGE, 0, itemStack);
             return ItemStack.EMPTY;
         }
@@ -597,7 +594,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
     @Override
     public @NotNull List<ItemStack> canSupply(@NotNull Direction direction) {
         var outputInventory = inventory.getInventory(EnergyMachineInventoryType.OUTPUT);
-        if(outputInventory == null) {
+        if (outputInventory == null) {
             return Collections.emptyList();
         }
         return IntStream.range(0, outputInventory.size())
@@ -629,21 +626,21 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
      *
      * @return machine charge
      */
-    public int getCharge() {
-        return energyContainer.getCharge().intValue();
+    public Energy getCharge() {
+        return energyContainer.getCharge();
     }
 
     /**
      * Create energy machine screen handler
      *
-     * @param syncId sync id
+     * @param syncId          sync id
      * @param playerInventory player inventory
-     * @param player player
+     * @param player          player
      * @return instance of energy machine screen handler
      */
-    abstract protected AbstractEnergyMachineScreenHandler createScreenHandler(int syncId,
-                                                                              @NotNull PlayerInventory playerInventory,
-                                                                              @NotNull PlayerEntity player);
+    protected abstract AbstractEnergyMachineScreenHandler<?> createScreenHandler(int syncId,
+                                                                                 @NotNull PlayerInventory playerInventory,
+                                                                                 @NotNull PlayerEntity player);
 
     @Nullable
     @Override
@@ -652,7 +649,7 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
                                           @NotNull PlayerEntity player) {
         var screenHandler = createScreenHandler(syncId, playerInventory, player);
         var world = player.getWorld();
-        if(!world.isClient && player instanceof ServerPlayerEntity serverPlayerEntity) {
+        if (!world.isClient && player instanceof ServerPlayerEntity serverPlayerEntity) {
             var syncer = energyMachinePropertyMap.createSyncer(syncId, serverPlayerEntity);
             screenHandler.setPropertySyncer(syncer);
         }
@@ -664,13 +661,14 @@ public abstract class AbstractEnergyMachineBlockEntity<B extends AbstractEnergyM
                                        @NotNull PacketByteBuf buf) {
     }
 
-    /** Called when block state replaced
+    /**
+     * Called when block state replaced
      *
-     * @param state old state
+     * @param state       old state
      * @param serverWorld server world
-     * @param pos machine position
-     * @param newState new state
-     * @param moved moved
+     * @param pos         machine position
+     * @param newState    new state
+     * @param moved       moved
      */
     public void onStateReplaced(@NotNull BlockState state,
                                 @NotNull ServerWorld serverWorld,

@@ -8,6 +8,7 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.AbstractCookingRecipe;
 import net.minecraft.recipe.Recipe;
+import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
@@ -22,18 +23,19 @@ public final class EnergyMachineUtils {
     /**
      * Calculate cooking time for abstract cooking recipe
      *
-     * @param world game world
+     * @param world      game world
      * @param recipeType recipe type
-     * @param inventory cooking inventory
+     * @param inventory  cooking inventory
+     * @param <T>        type of recipe
      * @return time of cooking
-     * @param <T> type of recipe
      */
     public static <T extends AbstractCookingRecipe> int getCookTimeTotal(@NotNull World world,
                                                                          @NotNull RecipeType<T> recipeType,
                                                                          @NotNull Inventory inventory) {
         return world.getRecipeManager()
                 .getFirstMatch(recipeType, inventory, world)
-                .map(AbstractCookingRecipe::getCookTime)
+                .map(RecipeEntry::value)
+                .map(AbstractCookingRecipe::getCookingTime)
                 .orElse(200);
     }
 
@@ -42,11 +44,11 @@ public final class EnergyMachineUtils {
      * Slot chose current slot index to cooking<br/>
      * Assuming that machine work with process in mode 1 input to 1 output
      *
-     * @param slot slot index
+     * @param slot              slot index
      * @param combinedInventory machine inventory
-     * @param world game world
-     * @param recipe cooking recipe
-     * @param count max count
+     * @param world             game world
+     * @param recipe            cooking recipe
+     * @param count             max count
      * @return true - output can be accepted, false - otherwise
      */
     public static boolean canAcceptRecipeOutput(int slot,
@@ -58,7 +60,7 @@ public final class EnergyMachineUtils {
         if (sourceStack.isEmpty()) {
             return false;
         }
-        var outputStack = recipe.getOutput(world.getRegistryManager());
+        var outputStack = recipe.getResult(world.getRegistryManager());
         if (outputStack.isEmpty()) {
             return false;
         }
@@ -79,12 +81,12 @@ public final class EnergyMachineUtils {
     /**
      * Method try to craft items, using passed inventory and recipe
      *
-     * @param slot slot index
+     * @param slot              slot index
      * @param combinedInventory machine inventory
-     * @param world game world
-     * @param recipe cooking recipe
-     * @param decrement amount of source stack to decrement
-     * @param maxCount max amount of output
+     * @param world             game world
+     * @param recipe            cooking recipe
+     * @param decrement         amount of source stack to decrement
+     * @param maxCount          max amount of output
      * @return true - recipe crafted, false - otherwise
      */
     public static boolean craftRecipe(int slot,
@@ -98,7 +100,7 @@ public final class EnergyMachineUtils {
         }
         var sourceStack = combinedInventory.getStack(EnergyMachineInventoryType.SOURCE, slot);
         var registryManager = world.getRegistryManager();
-        var recipeStack = recipe.getOutput(registryManager);
+        var recipeStack = recipe.getResult(registryManager);
         var outputStack = combinedInventory.getStack(EnergyMachineInventoryType.OUTPUT, slot);
         if (outputStack.isEmpty()) {
             combinedInventory.setStack(EnergyMachineInventoryType.OUTPUT, slot, recipeStack.copy());

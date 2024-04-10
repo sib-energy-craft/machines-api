@@ -26,8 +26,8 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * @since 0.0.4
  * @author sibmaks
+ * @since 0.0.4
  */
 public abstract class AbstractEnergyMachineScreenHandler<S extends EnergyMachineState> extends SlotsScreenHandler
         implements TypedPropertyScreenHandler {
@@ -180,7 +180,7 @@ public abstract class AbstractEnergyMachineScreenHandler<S extends EnergyMachine
             itemStack = slotStack.copy();
 
             var slotMeta = this.slotGroupsMeta.getByGlobalSlotIndex(index);
-            if(slotMeta != null) {
+            if (slotMeta != null) {
                 var slotType = slotMeta.getSlotType();
                 if (slotType == EnergyMachineInventoryType.SOURCE || slotType == EnergyMachineInventoryType.CHARGE ||
                         slotType == EnergyMachineInventoryType.OUTPUT) {
@@ -188,25 +188,22 @@ public abstract class AbstractEnergyMachineScreenHandler<S extends EnergyMachine
                         return ItemStack.EMPTY;
                     }
                 } else {
-                    if(isUsedInMachine(slotStack)) {
-                        if (!insertItem(slotGroupsMeta, slotStack, EnergyMachineInventoryType.SOURCE)) {
-                            return ItemStack.EMPTY;
-                        }
+                    if (isUsedInMachine(slotStack) &&
+                            (!insertItem(slotGroupsMeta, slotStack, EnergyMachineInventoryType.SOURCE))) {
+                        return ItemStack.EMPTY;
                     }
-                    if(CoreTags.isChargeable(slotStack)) {
-                        if (!insertItem(slotGroupsMeta, slotStack, EnergyMachineInventoryType.CHARGE)) {
-                            return ItemStack.EMPTY;
-                        }
+                    if (CoreTags.isChargeable(slotStack) &&
+                            (!insertItem(slotGroupsMeta, slotStack, EnergyMachineInventoryType.CHARGE))) {
+                        return ItemStack.EMPTY;
                     }
                 }
                 if (slotType == SlotTypes.QUICK_ACCESS) {
                     if (!insertItem(slotGroupsMeta, slotStack, SlotTypes.PLAYER_INVENTORY)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (slotType == SlotTypes.PLAYER_INVENTORY) {
-                    if (!insertItem(slotGroupsMeta, slotStack, SlotTypes.QUICK_ACCESS)) {
-                        return ItemStack.EMPTY;
-                    }
+                } else if (slotType == SlotTypes.PLAYER_INVENTORY &&
+                        (!insertItem(slotGroupsMeta, slotStack, SlotTypes.QUICK_ACCESS))) {
+                    return ItemStack.EMPTY;
                 }
             }
             slot.onQuickTransfer(slotStack, itemStack);
@@ -224,7 +221,7 @@ public abstract class AbstractEnergyMachineScreenHandler<S extends EnergyMachine
         return itemStack;
     }
 
-    abstract protected boolean isUsedInMachine(@NotNull ItemStack itemStack);
+    protected abstract boolean isUsedInMachine(@NotNull ItemStack itemStack);
 
     @Override
     public boolean canUse(@NotNull PlayerEntity player) {

@@ -26,9 +26,9 @@ public class ExperienceUtils {
                             @NotNull Vec3d pos,
                             int multiplier,
                             float experience) {
-        var i = MathHelper.floor((float) multiplier * experience);
-        var f = MathHelper.fractionalPart((float) multiplier * experience);
-        if (f != 0.0f && Math.random() < (double) f) {
+        var i = MathHelper.floor(multiplier * experience);
+        var f = MathHelper.fractionalPart(multiplier * experience);
+        if (f != 0.0f && Math.random() < f) {
             ++i;
         }
         ExperienceOrbEntity.spawn(world, pos, i);
