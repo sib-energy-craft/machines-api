@@ -1,5 +1,6 @@
 package com.github.sib_energy_craft.machines.block;
 
+import com.github.sib_energy_craft.energy_api.Energy;
 import com.github.sib_energy_craft.energy_api.EnergyLevel;
 import com.github.sib_energy_craft.energy_api.items.ChargeableItem;
 import com.github.sib_energy_craft.machines.block.entity.AbstractEnergyMachineBlockEntity;
@@ -37,11 +38,11 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
     public static final BooleanProperty WORKING = BooleanProperty.of("working");
 
     private final EnergyLevel energyLevel;
-    private final int maxCharge;
+    private final Energy maxCharge;
 
     protected AbstractEnergyMachineBlock(@NotNull Settings settings,
                                          @NotNull EnergyLevel energyLevel,
-                                         int maxCharge) {
+                                         Energy maxCharge) {
         super(settings);
         this.energyLevel = energyLevel;
         this.maxCharge = maxCharge;

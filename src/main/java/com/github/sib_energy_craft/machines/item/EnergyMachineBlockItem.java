@@ -14,8 +14,8 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * @since 0.0.6
  * @author sibmaks
+ * @since 0.0.6
  */
 public class EnergyMachineBlockItem<T extends AbstractEnergyMachineBlock> extends BlockItem {
 
@@ -30,8 +30,10 @@ public class EnergyMachineBlockItem<T extends AbstractEnergyMachineBlock> extend
                               @NotNull TooltipContext context) {
         super.appendTooltip(stack, world, tooltip, context);
         var block = getBlock();
-        var maxCharge = block.getMaxCharge();
-        var maxInput = block.getEnergyLevel().to;
+        var maxCharge = block.getMaxCharge()
+                .toPlainString();
+        var maxInput = block.getEnergyLevel().to
+                .toPlainString();
         var textColor = Color.GRAY.getRGB();
         var textStyle = Style.EMPTY.withColor(textColor);
         tooltip.add(Text.translatable("attribute.name.sib_energy_craft.max_input_eu", maxInput)
