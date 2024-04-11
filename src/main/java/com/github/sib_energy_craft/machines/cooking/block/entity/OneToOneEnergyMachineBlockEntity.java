@@ -19,26 +19,27 @@ public abstract class OneToOneEnergyMachineBlockEntity<B extends AbstractEnergyM
         extends CookingEnergyMachineBlockEntity<B> {
 
 
-    public OneToOneEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                            @NotNull BlockPos blockPos,
-                                            @NotNull BlockState blockState,
-                                            @NotNull B block) {
+    protected OneToOneEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                               @NotNull BlockPos blockPos,
+                                               @NotNull BlockState blockState,
+                                               @NotNull B block) {
         super(blockEntityType, blockPos, blockState, block);
     }
 
-    public OneToOneEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                            @NotNull BlockPos blockPos,
-                                            @NotNull BlockState blockState,
-                                            @NotNull B block,
-                                            int slots) {
+    protected OneToOneEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                               @NotNull BlockPos blockPos,
+                                               @NotNull BlockState blockState,
+                                               @NotNull B block,
+                                               int slots) {
         super(blockEntityType, blockPos, blockState, block, slots, slots, slots);
     }
 
     @Override
     protected boolean canAcceptRecipeOutput(int process,
                                             @NotNull World world,
-                                            @NotNull Recipe<Inventory> recipe,
+                                            @NotNull RecipeEntry<? extends Recipe<Inventory>> recipeEntry,
                                             int count) {
+        var recipe = recipeEntry.value();
         return EnergyMachineUtils.canAcceptRecipeOutput(process, inventory, world, recipe, count);
     }
 

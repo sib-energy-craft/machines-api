@@ -174,7 +174,7 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @since 0.0.16
      */
     @Nullable
-    public abstract Recipe<Inventory> getRecipe(@NotNull World world, int process);
+    public abstract RecipeEntry<? extends Recipe<Inventory>> getRecipe(@NotNull World world, int process);
 
     /**
      * Get recipe using all source inventory
@@ -260,13 +260,13 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
                                  @NotNull BlockPos pos,
                                  @NotNull BlockState state,
                                  @NotNull Map<String, Object> processContext) {
-        var recipe = getRecipe(world, process);
-        if (recipe == null) {
+        var recipeEntry = getRecipe(world, process);
+        if (recipeEntry == null) {
             return false;
         }
-        processContext.put("Recipe", recipe);
+        processContext.put("Recipe", recipeEntry);
         var maxCountPerStack = getMaxCountPerStack();
-        return canAcceptRecipeOutput(process, world, recipe, maxCountPerStack);
+        return canAcceptRecipeOutput(process, world, recipeEntry, maxCountPerStack);
     }
 
     @Override
@@ -303,15 +303,15 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     /**
      * Get machine accept recipe output produced by specific process
      *
-     * @param process machine process index
-     * @param world   game world
-     * @param recipe  crafting recipe
-     * @param count   max amount of output
+     * @param process     machine process index
+     * @param world       game world
+     * @param recipeEntry crafting recipe
+     * @param count       max amount of output
      * @return true - machine can accept recipe, false - otherwise
      */
     protected abstract boolean canAcceptRecipeOutput(int process,
                                                      @NotNull World world,
-                                                     @NotNull Recipe<Inventory> recipe,
+                                                     @NotNull RecipeEntry<? extends Recipe<Inventory>> recipeEntry,
                                                      int count);
 
     /**
