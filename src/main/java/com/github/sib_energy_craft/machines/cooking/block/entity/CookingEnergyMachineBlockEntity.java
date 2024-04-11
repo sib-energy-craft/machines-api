@@ -210,9 +210,9 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @since 0.0.20
      */
     @Nullable
-    protected <C extends Inventory, R extends Recipe<C>> R getRecipe(@NotNull RecipeType<R> recipeType,
-                                                                     @NotNull World world,
-                                                                     int slot) {
+    protected <C extends Inventory, R extends Recipe<C>> RecipeEntry<R> getRecipe(@NotNull RecipeType<R> recipeType,
+                                                                                  @NotNull World world,
+                                                                                  int slot) {
         var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
         if (sourceInventory == null) {
             return null;
@@ -221,7 +221,6 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
         var craftingInventory = (C) new SimpleInventory(sourceStack);
         var recipeManager = world.getRecipeManager();
         return recipeManager.getFirstMatch(recipeType, craftingInventory, world)
-                .map(RecipeEntry::value)
                 .orElse(null);
     }
 
