@@ -63,7 +63,7 @@ public abstract class CookingEnergyMachineScreenHandler<S extends CookingEnergyM
         super(type, syncId, playerInventory, inventory, sourceSlots, outputSlots, energyMachineState, slotLayoutManager);
     }
 
-    abstract protected boolean isUsedInMachine(@NotNull ItemStack itemStack);
+    protected abstract boolean isUsedInMachine(@NotNull ItemStack itemStack);
 
     /**
      * Get cook progress status

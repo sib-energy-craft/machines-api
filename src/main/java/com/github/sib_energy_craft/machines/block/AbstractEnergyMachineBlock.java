@@ -26,8 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * @since 0.0.1
  * @author sibmaks
+ * @since 0.0.1
  */
 public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
     public static final BooleanProperty WORKING = BooleanProperty.of("working");
@@ -37,9 +37,9 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
     @Getter
     private final int maxCharge;
 
-    public AbstractEnergyMachineBlock(@NotNull Settings settings,
-                                      @NotNull EnergyLevel energyLevel,
-                                      int maxCharge) {
+    protected AbstractEnergyMachineBlock(@NotNull Settings settings,
+                                         @NotNull EnergyLevel energyLevel,
+                                         int maxCharge) {
         super(settings);
         this.energyLevel = energyLevel;
         this.maxCharge = maxCharge;
@@ -133,15 +133,15 @@ public abstract class AbstractEnergyMachineBlock extends BlockWithEntity {
         if (!(world instanceof ServerWorld serverWorld)) {
             return;
         }
-        getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach((stackx) -> {
-            dropStack(world, pos, stackx);
+        getDroppedStacks(state, serverWorld, pos, blockEntity, player, hand).forEach(stack -> {
+            dropStack(world, pos, stack);
             if (!(blockEntity instanceof AbstractEnergyMachineBlockEntity<?> abstractEnergyMachineBlockEntity)) {
                 return;
             }
-            var item = stackx.getItem();
+            var item = stack.getItem();
             var charge = abstractEnergyMachineBlockEntity.getCharge();
             if (item instanceof ChargeableItem chargeableItem) {
-                chargeableItem.charge(stackx, charge);
+                chargeableItem.charge(stack, charge);
             }
         });
         state.onStacksDropped(serverWorld, pos, hand, true);

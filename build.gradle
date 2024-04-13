@@ -12,7 +12,8 @@ targetCompatibility = jdk_version
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    maven { url 'https://sibmaks.ru/repository/maven-snapshots/' }
+    maven { url 'https://sibmaks.ru/repository/maven-releases/' }
 }
 
 dependencies {
@@ -87,7 +88,46 @@ jar {
 
 // configure the maven publication
 publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from(components.java)
+            pom {
+                packaging = "jar"
+                url = "https://github.com/sib-energy-craft/energy-machines-apit"
+
+                licenses {
+                    license {
+                        name = "The MIT License (MIT)"
+                        url = "https://www.mit.edu/~amini/LICENSE.md"
+                    }
+                }
+
+                scm {
+                    connection = "scm:https://github.com/sib-energy-craft/energy-machines-api.git"
+                    developerConnection = 'scm:git:ssh://github.com/sib-energy-craft'
+                    url = "https://github.com/sib-energy-craft/energy-machines-api"
+                }
+
+                developers {
+                    developer {
+                        id = "sibmaks"
+                        name = "Maksim Drobyshev"
+                        email = "sibmaks@vk.com"
+                    }
+                }
+            }
+        }
+    }
     repositories {
+        maven {
+            def releasesUrl = uri("https://sibmaks.ru/repository/maven-releases/")
+            def snapshotsUrl = uri("https://sibmaks.ru/repository/maven-snapshots/")
+            url = version.toString().endsWith("SNAPSHOT") ? snapshotsUrl : releasesUrl
+            credentials {
+                username = project.findProperty("nexus_username") ?: System.getenv("NEXUS_USERNAME")
+                password = project.findProperty("nexus_password") ?: System.getenv("NEXUS_PASSWORD")
+            }
+        }
         maven {
             name = "GitHubPackages"
             url = "https://maven.pkg.github.com/sib-energy-craft/energy-machines-api"
@@ -95,11 +135,6 @@ publishing {
                 username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
                 password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
             }
-        }
-    }
-    publications {
-        gpr(MavenPublication) {
-            from(components.java)
         }
     }
 }

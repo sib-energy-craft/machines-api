@@ -39,20 +39,20 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     protected final Object2IntOpenHashMap<Identifier> recipesUsed;
 
 
-    public CookingEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                           @NotNull BlockPos blockPos,
-                                           @NotNull BlockState blockState,
-                                           @NotNull B block) {
+    protected CookingEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                              @NotNull BlockPos blockPos,
+                                              @NotNull BlockState blockState,
+                                              @NotNull B block) {
         this(blockEntityType, blockPos, blockState, block, 1, 1, 1);
     }
 
-    public CookingEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
-                                           @NotNull BlockPos blockPos,
-                                           @NotNull BlockState blockState,
-                                           @NotNull B block,
-                                           int sourceSlots,
-                                           int outputSlots,
-                                           int parallelProcess) {
+    protected CookingEnergyMachineBlockEntity(@NotNull BlockEntityType<?> blockEntityType,
+                                              @NotNull BlockPos blockPos,
+                                              @NotNull BlockState blockState,
+                                              @NotNull B block,
+                                              int sourceSlots,
+                                              int outputSlots,
+                                              int parallelProcess) {
         super(blockEntityType, blockPos, blockState, block, sourceSlots, outputSlots, parallelProcess);
         this.recipesUsed = new Object2IntOpenHashMap<>();
 
@@ -84,31 +84,30 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     @Override
     protected void onSourceSet(@NotNull World world, boolean wasSourceEmpty, boolean isSourceEmpty) {
         super.onSourceSet(world, wasSourceEmpty, isSourceEmpty);
-        if(isSourceEmpty) {
+        if (isSourceEmpty) {
             this.cookTime = 0;
-        } else if(wasSourceEmpty) {
+        } else if (wasSourceEmpty) {
             this.cookTimeTotal = getCookTimeTotal(world);
         }
     }
 
     @Override
-    public void setLastRecipe(@Nullable Recipe<?> recipe) {
+    public void setLastRecipe(@Nullable RecipeEntry<?> recipe) {
         if (recipe != null) {
-            var identifier = recipe.getId();
+            var identifier = recipe.id();
             this.recipesUsed.addTo(identifier, 1);
         }
     }
 
     @Override
-    @Nullable
-    public Recipe<?> getLastRecipe() {
+    public RecipeEntry<?> getLastRecipe() {
         return null;
     }
 
     @Override
     public void provideRecipeInputs(@NotNull RecipeMatcher finder) {
         var sources = this.inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sources == null) {
+        if (sources == null) {
             return;
         }
         for (int i = 0; i < sources.size(); i++) {
@@ -132,9 +131,9 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @param pos   position to drop
      * @return list of last used recipes
      */
-    protected List<Recipe<?>> getRecipesUsedAndDropExperience(@NotNull ServerWorld world,
-                                                              @NotNull Vec3d pos) {
-        var recipes = new ArrayList<Recipe<?>>();
+    protected List<RecipeEntry<?>> getRecipesUsedAndDropExperience(@NotNull ServerWorld world,
+                                                                   @NotNull Vec3d pos) {
+        var recipes = new ArrayList<RecipeEntry<?>>();
         var recipeManager = world.getRecipeManager();
         for (var entry : this.recipesUsed.object2IntEntrySet()) {
             var key = entry.getKey();
@@ -149,15 +148,16 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     /**
      * Drop experience on recipe use
      *
-     * @param world game world
-     * @param pos position
-     * @param id recipe entry id
-     * @param recipe used recipe
+     * @param world       game world
+     * @param pos         position
+     * @param id          recipe entry id
+     * @param recipeEntry used recipe
      */
     protected void dropExperience(@NotNull ServerWorld world,
                                   @NotNull Vec3d pos,
                                   int id,
-                                  @NotNull Recipe<?> recipe) {
+                                  @NotNull RecipeEntry<? extends Recipe<?>> recipeEntry) {
+        var recipe = recipeEntry.value();
         if (recipe instanceof AbstractCookingRecipe cookingRecipe) {
             ExperienceUtils.drop(world, pos, id, cookingRecipe.getExperience());
         }
@@ -166,13 +166,12 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     /**
      * Get current recipe by game world and process index
      *
-     * @param world game world
+     * @param world   game world
      * @param process process index
-     *
      * @return recipe
      * @since 0.0.16
      */
-    abstract public @Nullable Recipe<Inventory> getRecipe(@NotNull World world, int process);
+    public abstract @Nullable RecipeEntry<? extends Recipe<Inventory>> getRecipe(@NotNull World world, int process);
 
     /**
      * Get recipe using all source inventory
@@ -180,10 +179,11 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @return recipe
      * @since 0.0.16
      */
-    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
-                                                                               @NotNull World world) {
+    protected <C extends Inventory,
+            R extends Recipe<C>> @Nullable RecipeEntry<R> getRecipe(@NotNull RecipeType<R> recipeType,
+                                                                    @NotNull World world) {
         var sourceInventory = (C) inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sourceInventory == null) {
+        if (sourceInventory == null) {
             return null;
         }
         var recipeManager = world.getRecipeManager();
@@ -197,11 +197,12 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @return recipe
      * @since 0.0.20
      */
-    protected <C extends Inventory, T extends Recipe<C>> @Nullable T getRecipe(@NotNull RecipeType<T> recipeType,
-                                                                               @NotNull World world,
-                                                                               int slot) {
+    protected <C extends Inventory,
+            T extends Recipe<C>> @Nullable RecipeEntry<T> getRecipe(@NotNull RecipeType<T> recipeType,
+                                                                    @NotNull World world,
+                                                                    int slot) {
         var sourceInventory = inventory.getInventory(EnergyMachineInventoryType.SOURCE);
-        if(sourceInventory == null) {
+        if (sourceInventory == null) {
             return null;
         }
         var sourceStack = sourceInventory.getStack(slot);
@@ -214,10 +215,10 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     /**
      * Method for calculation decrement of source items on cooking
      *
-     * @param recipe using recipe
+     * @param recipeEntry using recipe
      * @return amount of source to decrement
      */
-    protected int calculateDecrement(@NotNull Recipe<?> recipe) {
+    protected int calculateDecrement(@NotNull RecipeEntry<? extends Recipe<?>> recipeEntry) {
         return 1;
     }
 
@@ -228,7 +229,7 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
      * @param world game world
      * @return total cook time
      */
-    abstract public int getCookTimeTotal(@NotNull World world);
+    public abstract int getCookTimeTotal(@NotNull World world);
 
     /**
      * Method return cook time increment
@@ -246,13 +247,13 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
                                  @NotNull BlockPos pos,
                                  @NotNull BlockState state,
                                  @NotNull Map<String, Object> processContext) {
-        var recipe = getRecipe(world, process);
-        if (recipe == null) {
+        var recipeEntry = getRecipe(world, process);
+        if (recipeEntry == null) {
             return false;
         }
-        processContext.put("Recipe", recipe);
+        processContext.put("Recipe", recipeEntry);
         var maxCountPerStack = getMaxCountPerStack();
-        return canAcceptRecipeOutput(process, world, recipe, maxCountPerStack);
+        return canAcceptRecipeOutput(process, world, recipeEntry, maxCountPerStack);
     }
 
     @Override
@@ -278,7 +279,7 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
                                      @NotNull BlockPos pos,
                                      @NotNull BlockState state,
                                      @NotNull Map<String, Object> processContext) {
-        var recipe = (Recipe<Inventory>) processContext.get("Recipe");
+        var recipe = (RecipeEntry<Recipe<Inventory>>) processContext.get("Recipe");
         var maxCountPerStack = getMaxCountPerStack();
         int decrement = calculateDecrement(recipe);
         if (craftRecipe(process, world, recipe, decrement, maxCountPerStack)) {
@@ -289,30 +290,30 @@ public abstract class CookingEnergyMachineBlockEntity<B extends AbstractEnergyMa
     /**
      * Get machine accept recipe output produced by specific process
      *
-     * @param process machine process index
-     * @param world game world
-     * @param recipe crafting recipe
-     * @param count max amount of output
+     * @param process     machine process index
+     * @param world       game world
+     * @param recipeEntry crafting recipe
+     * @param count       max amount of output
      * @return true - machine can accept recipe, false - otherwise
      */
-    abstract protected boolean canAcceptRecipeOutput(int process,
+    protected abstract boolean canAcceptRecipeOutput(int process,
                                                      @NotNull World world,
-                                                     @NotNull Recipe<Inventory> recipe,
+                                                     @NotNull RecipeEntry<? extends Recipe<Inventory>> recipeEntry,
                                                      int count);
 
     /**
      * Craft recipe in specific process
      *
-     * @param process machine process index
-     * @param world game world
-     * @param recipe crafting recipe
+     * @param process   machine process index
+     * @param world     game world
+     * @param recipe    crafting recipe
      * @param decrement amount of source stack to decrement
-     * @param maxCount max amount of output
+     * @param maxCount  max amount of output
      * @return true - recipe crafted, false - otherwise
      */
-    abstract public boolean craftRecipe(int process,
+    public abstract boolean craftRecipe(int process,
                                         @NotNull World world,
-                                        @NotNull Recipe<Inventory> recipe,
+                                        @NotNull RecipeEntry<? extends Recipe<Inventory>> recipe,
                                         int decrement,
                                         int maxCount);
 

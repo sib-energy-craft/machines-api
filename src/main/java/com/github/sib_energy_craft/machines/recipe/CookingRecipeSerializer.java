@@ -1,15 +1,19 @@
 package com.github.sib_energy_craft.machines.recipe;
 
-import com.google.gson.JsonObject;
+import com.mojang.datafixers.Products;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.recipe.CookingRecipeSerializer.RecipeFactory;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.ShapedRecipe;
 import net.minecraft.recipe.book.CookingRecipeCategory;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.dynamic.Codecs;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 
 /**
  * @since 0.0.1
@@ -18,29 +22,41 @@ import org.jetbrains.annotations.NotNull;
 public record CookingRecipeSerializer<T extends OpenAbstractCookingRecipe>(@NotNull RecipeFactory<T> recipeFactory,
                                                                            int cookingTime) implements RecipeSerializer<T> {
 
-    @Override
-    public @NotNull T read(@NotNull Identifier identifier, @NotNull JsonObject jsonObject) {
-        var string = JsonHelper.getString(jsonObject, "group", "");
-        var category = JsonHelper.getString(jsonObject, "category", null);
-        var cookingRecipeCategory = CookingRecipeCategory.CODEC.byId(category, CookingRecipeCategory.MISC);
-        var jsonElement = JsonHelper.hasArray(jsonObject, "ingredient") ?
-                JsonHelper.getArray(jsonObject, "ingredient") : JsonHelper.getObject(jsonObject, "ingredient");
-        var ingredient = Ingredient.fromJson(jsonElement);
-        var itemStack = ShapedRecipe.outputFromJson(JsonHelper.getObject(jsonObject, "result"));
-        var f = JsonHelper.getFloat(jsonObject, "experience", 0.0f);
-        var i = JsonHelper.getInt(jsonObject, "cookingTime", this.cookingTime);
-        return this.recipeFactory.create(identifier, string, cookingRecipeCategory, ingredient, itemStack, f, i);
+    public CookingRecipeSerializer(@NotNull RecipeFactory<T> recipeFactory) {
+
+        this.codec = RecordCodecBuilder.create((instance) -> {
+            Products.P6 var10000 = instance.group(Codecs.createStrictOptionalFieldCodec(Codec.STRING, "group", "").forGetter((recipe) -> {
+                return recipe.group;
+            }), CookingRecipeCategory.CODEC.fieldOf("category").orElse(CookingRecipeCategory.MISC).forGetter((recipe) -> {
+                return recipe.category;
+            }), Ingredient.DISALLOW_EMPTY_CODEC.fieldOf("ingredient").forGetter((recipe) -> {
+                return recipe.ingredient;
+            }), Registries.ITEM.getCodec().xmap(ItemStack::new, ItemStack::getItem).fieldOf("result").forGetter((recipe) -> {
+                return recipe.result;
+            }), Codec.FLOAT.fieldOf("experience").orElse(0.0F).forGetter((recipe) -> {
+                return recipe.experience;
+            }), Codec.INT.fieldOf("cookingtime").orElse(cookingTime).forGetter((recipe) -> {
+                return recipe.cookingTime;
+            }));
+            Objects.requireNonNull(recipeFactory);
+            return var10000.apply(instance, recipeFactory::create);
+        });
     }
 
     @Override
-    public @NotNull T read(@NotNull Identifier identifier, @NotNull PacketByteBuf packetByteBuf) {
-        var string = packetByteBuf.readString();
-        var cookingRecipeCategory = packetByteBuf.readEnumConstant(CookingRecipeCategory.class);
-        var ingredient = Ingredient.fromPacket(packetByteBuf);
-        var itemStack = packetByteBuf.readItemStack();
-        var f = packetByteBuf.readFloat();
-        var i = packetByteBuf.readVarInt();
-        return this.recipeFactory.create(identifier, string, cookingRecipeCategory, ingredient, itemStack, f, i);
+    public Codec<T> codec() {
+        return null;
+    }
+
+    @Override
+    public T read(PacketByteBuf buf) {
+        var group = buf.readString();
+        var category = buf.readEnumConstant(CookingRecipeCategory.class);
+        var ingredient = Ingredient.fromPacket(buf);
+        var itemStack = buf.readItemStack();
+        var exp = buf.readFloat();
+        var cookTime = buf.readVarInt();
+        return this.recipeFactory.create(group, category, ingredient, itemStack, exp, cookTime);
     }
 
     @Override
@@ -50,7 +66,7 @@ public record CookingRecipeSerializer<T extends OpenAbstractCookingRecipe>(@NotN
         abstractCookingRecipe.getInput().write(packetByteBuf);
         packetByteBuf.writeItemStack(abstractCookingRecipe.getOutput());
         packetByteBuf.writeFloat(abstractCookingRecipe.getExperience());
-        packetByteBuf.writeVarInt(abstractCookingRecipe.getCookTime());
+        packetByteBuf.writeVarInt(abstractCookingRecipe.getCookingTime());
     }
 
 }

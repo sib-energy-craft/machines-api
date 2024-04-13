@@ -224,7 +224,7 @@ public abstract class AbstractEnergyMachineScreenHandler<S extends EnergyMachine
         return itemStack;
     }
 
-    abstract protected boolean isUsedInMachine(@NotNull ItemStack itemStack);
+    protected abstract boolean isUsedInMachine(@NotNull ItemStack itemStack);
 
     @Override
     public boolean canUse(@NotNull PlayerEntity player) {
